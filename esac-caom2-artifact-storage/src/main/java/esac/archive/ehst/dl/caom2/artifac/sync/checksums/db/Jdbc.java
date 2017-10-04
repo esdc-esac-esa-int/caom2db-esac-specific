@@ -13,6 +13,7 @@ import com.mchange.v2.c3p0.ComboPooledDataSource;
  */
 public class Jdbc
 {
+
     protected static final String DB_URL_PROP = "esac.tools.db.url";
     protected static final String DB_DRIVER_PROP = "esac.tools.db.driver";
     protected final static String DB_USER_PROP = "esac.tools.db.username";
