@@ -19,7 +19,7 @@ public class ConfigProperties {
 	private static String dbPass = "";
 	private static String pathToConfigFile = "";
 
-	private static final Logger log = Logger.getLogger(ConfigProperties.class.getName());
+	private static final Logger log = Logger.getLogger(ConfigProperties.class);
 
 	private static ConfigProperties instance = null;
 
@@ -45,7 +45,7 @@ public class ConfigProperties {
 
 	private ConfigProperties() {
 		try {
-			log.info("props " + prop);
+			log.info("Props " + prop);
 			InputStream stream = getClass().getClassLoader().getResourceAsStream(pathToConfigFile);
 			log.info("Loading properties file '" + pathToConfigFile + "': " + stream);
 			if (stream != null) {

@@ -1,8 +1,10 @@
 package esac.archive.ehst.dl.caom2.artifac.sync;
 
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import ca.nrc.cadc.util.ArgumentMap;
+import ca.nrc.cadc.util.Log4jInit;
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
 
 public class Main {
@@ -11,6 +13,14 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 		ArgumentMap am = new ArgumentMap(args);
+		if (am.isSet("d") || am.isSet("debug")) {
+			Log4jInit.setLevel("esac.archive.ehst.dl.caom2.artifac.sync", Level.DEBUG);
+		} else if (am.isSet("v") || am.isSet("verbose")) {
+			Log4jInit.setLevel("esac.archive.ehst.dl.caom2.artifac.sync", Level.INFO);
+		} else {
+			Log4jInit.setLevel("esac.archive.ehst.dl.caom2.artifac.sync", Level.WARN);
+		}
+
 		String configFile = am.getValue("configFile");
 		String dbPass = am.getValue("dbPass");
 
