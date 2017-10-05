@@ -50,6 +50,7 @@ public class EsacArtifactStorage implements ArtifactStore {
 
 	@Override
 	public boolean contains(URI artifactURI, URI checksum) throws TransientException {
+		log.info("Entering contains method");
 		init();
 		boolean result = EsacChecksumManagement.getInstance().select(artifactURI, checksum);
 		return result;
@@ -58,6 +59,7 @@ public class EsacArtifactStorage implements ArtifactStore {
 	@Override
 	public void store(URI artifactURI, URI checksum, Long arg2, InputStream input) throws TransientException,
 			UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
+		log.info("Entering store method");
 		init();
 		if (!contains(artifactURI, checksum)) {
 			if (saveFile(artifactURI, input)) {
