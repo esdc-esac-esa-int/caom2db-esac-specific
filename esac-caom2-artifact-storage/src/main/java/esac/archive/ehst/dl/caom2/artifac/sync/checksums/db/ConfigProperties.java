@@ -4,8 +4,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.log4j.Logger;
 
 /**
  *
@@ -19,13 +19,13 @@ public class ConfigProperties {
 	private static String dbPass = "";
 	private static String pathToConfigFile = "";
 
-	private static final Logger logger = Logger.getLogger(ConfigProperties.class.getName());
+	private static final Logger log = Logger.getLogger(ConfigProperties.class.getName());
 
 	private static ConfigProperties instance = null;
 
 	public static ConfigProperties getInstance() {
 		if (!initialized) {
-			logger.log(Level.SEVERE, "Error: Init() method must be called first.");
+			log.error("Error: Init() method must be called first.");
 			System.exit(1);
 		}
 
@@ -36,7 +36,7 @@ public class ConfigProperties {
 	}
 
 	public static void Init(String path, String pass) {
-		logger.log(Level.INFO, "Creating properties file");
+		log.info("Creating properties file");
 		prop = new Properties();
 		dbPass = pass;
 		pathToConfigFile = path;
@@ -45,17 +45,17 @@ public class ConfigProperties {
 
 	private ConfigProperties() {
 		try {
-			logger.log(Level.INFO, "props " + prop);
+			log.info("props " + prop);
 			InputStream stream = getClass().getClassLoader().getResourceAsStream(pathToConfigFile);
-			logger.log(Level.INFO, "Loading properties file '" + pathToConfigFile + "': " + stream);
+			log.info("Loading properties file '" + pathToConfigFile + "': " + stream);
 			if (stream != null) {
 				prop.load(stream);
 			} else {
 				throw new FileNotFoundException("property file " + pathToConfigFile + " not found in the classpath");
 			}
-			logger.log(Level.INFO, "Properties file '" + pathToConfigFile + "' loaded");
+			log.info("Properties file '" + pathToConfigFile + "' loaded");
 		} catch (IOException e) {
-			logger.log(Level.SEVERE, "Error loading properties file '" + pathToConfigFile + "'");
+			log.error("Error loading properties file '" + pathToConfigFile + "'");
 			e.printStackTrace();
 		}
 
@@ -65,8 +65,8 @@ public class ConfigProperties {
 		String result = null;
 		result = prop.getProperty(property);
 		if (result == null || result.equals("")) {
-			logger.log(Level.SEVERE, "Error reading properties file '" + pathToConfigFile
-					+ "'. There should be a parameter named " + property);
+			log.error("Error reading properties file '" + pathToConfigFile + "'. There should be a parameter named "
+					+ property);
 		}
 		return result;
 	}
