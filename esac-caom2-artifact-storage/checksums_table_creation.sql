@@ -5,7 +5,7 @@
 CREATE TABLE caom2.checksums
 (
   artifact character varying(1024) NOT NULL,
-  checksum character varying(64) NOT NULL,
+  checksum character varying(64),
   CONSTRAINT checksums_pkidx PRIMARY KEY (artifact)
 )
 WITH (
