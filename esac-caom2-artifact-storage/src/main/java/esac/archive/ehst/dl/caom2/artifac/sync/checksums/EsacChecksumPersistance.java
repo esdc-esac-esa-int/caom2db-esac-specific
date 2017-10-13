@@ -1,6 +1,15 @@
 package esac.archive.ehst.dl.caom2.artifac.sync.checksums;
 
 import java.net.URI;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import org.apache.log4j.Logger;
+
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.JdbcSingleton;
 
 /**
  *
@@ -9,27 +18,275 @@ import java.net.URI;
  */
 public class EsacChecksumPersistance {
 
-    private URI artifactURI;
-    private URI checksum;
+	private static Logger log = Logger.getLogger(EsacChecksumPersistance.class.getName());
 
-    public EsacChecksumPersistance(URI artifact, URI checksum) {
-        this.setArtifactURI(artifact);
-        this.setChecksum(checksum);
-    }
+	protected static final String SCHEMA = "caom2.artifactsync.checksumTable.schema";
+	protected static final String TABLENAME = "caom2.artifactsync.checksumTable.table";
+	protected static final String COLUMN_ARTIFACT = "caom2.artifactsync.checksumTable.columnArtifact";
+	protected static final String COLUMN_CHECKSUM = "caom2.artifactsync.checksumTable.columnChecksum";
+	private static String checksumSchema = null;
+	private static String checksumTable = null;
+	private static String checksumArtifactColumnName = null;
+	private static String checksumChecksumColumnName = null;
 
-    public URI getArtifactURI() {
-        return artifactURI;
-    }
+	private static EsacChecksumPersistance instance = null;
 
-    public void setArtifactURI(URI artifactURI) {
-        this.artifactURI = artifactURI;
-    }
+	public static EsacChecksumPersistance getInstance() {
+		if (instance == null) {
+			instance = new EsacChecksumPersistance();
+		}
+		return instance;
+	}
 
-    public URI getChecksum() {
-        return checksum;
-    }
+	private EsacChecksumPersistance() {
+		try {
 
-    public void setChecksum(URI checksum) {
-        this.checksum = checksum;
-    }
+			setChecksumSchema(ConfigProperties.getInstance().getProperty(SCHEMA));
+			setChecksumTable(ConfigProperties.getInstance().getProperty(TABLENAME));
+			setChecksumArtifactColumnName(ConfigProperties.getInstance().getProperty(COLUMN_ARTIFACT));
+			setChecksumChecksumColumnName(ConfigProperties.getInstance().getProperty(COLUMN_CHECKSUM));
+
+		} catch (Exception e) {
+			log.error("Unexpected exception constructing EsacChecksumPersistance: " + e.getMessage());
+			System.exit(1);
+		}
+	}
+
+	public boolean upsert(URI artifactURI, URI md5) {
+		// INSERT INTO tablename (a, b, c) values (1, 2, 10) ON CONFLICT (a) DO
+		// UPDATE SET c = tablename.c + 1;
+		boolean result = false;
+		String upsert = null;
+		if (md5 != null) {
+			upsert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " ("
+					+ getChecksumArtifactColumnName() + ", " + getChecksumChecksumColumnName() + ") " + " values ('"
+					+ artifactURI.toString() + "', '" + md5.toString() + "') on conflict ("
+					+ getChecksumArtifactColumnName() + ") do update set " + getChecksumChecksumColumnName() + " = '"
+					+ md5.toString() + "';";
+		} else {
+			upsert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " ("
+					+ getChecksumArtifactColumnName() + ", " + getChecksumChecksumColumnName() + ") " + " values ('"
+					+ artifactURI.toString() + "', NULL) on conflict (" + getChecksumArtifactColumnName()
+					+ ") do update set " + getChecksumChecksumColumnName() + " = NULL;";
+		}
+		log.debug("insert = " + upsert);
+
+		Connection con = null;
+		Statement stmt = null;
+		try {
+			con = JdbcSingleton.getInstance().getConnection();
+			stmt = con.createStatement();
+			int res = stmt.executeUpdate(upsert);
+			if (res != 1) {
+				throw new RuntimeException("Unexpected exception inserting artifact: " + artifactURI.toString());
+			}
+		} catch (Exception ex) {
+			throw new RuntimeException("Unexpected exception when inserting: " + ex.getMessage());
+		} finally {
+			if (stmt != null) {
+				try {
+					stmt.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+				}
+			}
+		}
+		return result;
+	}
+
+	public boolean select(URI artifactURI) {
+		boolean result = false;
+		Statement stmt = null;
+		String query = "select * from " + getChecksumSchema() + "." + getChecksumTable() + " where "
+				+ getChecksumArtifactColumnName() + " = '" + artifactURI.toString() + "';";
+		ResultSet rs = null;
+
+		Connection con = null;
+		try {
+			con = JdbcSingleton.getInstance().getConnection();
+			stmt = con.createStatement();
+			rs = stmt.executeQuery(query);
+			result = rs.next();
+		} catch (Exception ex) {
+			throw new RuntimeException("Unexpected exception when selecting: " + ex.getMessage());
+		} finally {
+			if (rs != null) {
+				try {
+					rs.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (stmt != null) {
+				try {
+					stmt.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+				}
+			}
+
+		}
+		return result;
+
+	}
+
+	public boolean select(URI artifactURI, URI checksum) {
+		boolean result = false;
+		Statement stmt = null;
+		String query = "select * from " + getChecksumSchema() + "." + getChecksumTable() + " where "
+				+ getChecksumArtifactColumnName() + " = '" + artifactURI.toString() + "' and "
+				+ getChecksumChecksumColumnName() + " = '" + checksum.toString() + "'";
+		ResultSet rs = null;
+
+		Connection con = null;
+		try {
+			con = JdbcSingleton.getInstance().getConnection();
+			stmt = con.createStatement();
+			rs = stmt.executeQuery(query);
+			result = rs.next();
+		} catch (Exception ex) {
+			throw new RuntimeException("Unexpected exception when selecting: " + ex.getMessage());
+		} finally {
+			if (rs != null) {
+				try {
+					rs.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (stmt != null) {
+				try {
+					stmt.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+				}
+			}
+		}
+		return result;
+	}
+
+	public void insert(URI artifactURI, URI checksum) {
+		String insert = null;
+		if (checksum != null) {
+			insert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " ("
+					+ getChecksumArtifactColumnName() + ", " + getChecksumChecksumColumnName() + ") " + " values ('"
+					+ artifactURI.toString() + "', '" + checksum.toString() + "');";
+		} else {
+			insert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " ("
+					+ getChecksumArtifactColumnName() + ") " + " values ('" + artifactURI.toString() + "');";
+		}
+		log.debug("insert = " + insert);
+
+		Connection con = null;
+		Statement stmt = null;
+		try {
+			con = JdbcSingleton.getInstance().getConnection();
+			stmt = con.createStatement();
+			int res = stmt.executeUpdate(insert);
+			if (res != 1) {
+				throw new RuntimeException("Unexpected exception inserting artifact: " + artifactURI.toString());
+			}
+		} catch (Exception ex) {
+			throw new RuntimeException("Unexpected exception when inserting: " + ex.getMessage());
+		} finally {
+			if (stmt != null) {
+				try {
+					stmt.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+				}
+			}
+		}
+	}
+
+	public void update(URI artifactURI, URI checksum) {
+		String update = null;
+		if (checksum != null) {
+			update = "update " + getChecksumSchema() + "." + getChecksumTable() + " set "
+					+ getChecksumChecksumColumnName() + " = '" + checksum.toString() + "' where "
+					+ getChecksumArtifactColumnName() + " = '" + artifactURI.toString() + "';";
+		} else {
+			update = "update " + getChecksumSchema() + "." + getChecksumTable() + " set "
+					+ getChecksumChecksumColumnName() + " = " + null + " where " + getChecksumArtifactColumnName()
+					+ " = '" + artifactURI.toString() + "';";
+		}
+		log.debug("update = " + update);
+
+		Connection con = null;
+		Statement stmt = null;
+		try {
+			con = JdbcSingleton.getInstance().getConnection();
+			stmt = con.createStatement();
+			int res = stmt.executeUpdate(update);
+			if (res != 1) {
+				throw new RuntimeException("Unexpected exception updating artifact: " + artifactURI.toString());
+			}
+		} catch (Exception ex) {
+			throw new RuntimeException("Unexpected exception when updating: " + ex.getMessage());
+		} finally {
+			if (stmt != null) {
+				try {
+					stmt.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+				}
+			}
+		}
+	}
+
+	public String getChecksumSchema() {
+		return checksumSchema;
+	}
+
+	private void setChecksumSchema(String checksumSchema) {
+		EsacChecksumPersistance.checksumSchema = checksumSchema;
+	}
+
+	public String getChecksumTable() {
+		return checksumTable;
+	}
+
+	private void setChecksumTable(String checksumTable) {
+		EsacChecksumPersistance.checksumTable = checksumTable;
+	}
+
+	public String getChecksumArtifactColumnName() {
+		return checksumArtifactColumnName;
+	}
+
+	private void setChecksumArtifactColumnName(String checksumArtifactColumnName) {
+		EsacChecksumPersistance.checksumArtifactColumnName = checksumArtifactColumnName;
+	}
+
+	public String getChecksumChecksumColumnName() {
+		return checksumChecksumColumnName;
+	}
+
+	private void setChecksumChecksumColumnName(String checksumChecksumColumnName) {
+		EsacChecksumPersistance.checksumChecksumColumnName = checksumChecksumColumnName;
+	}
+
 }

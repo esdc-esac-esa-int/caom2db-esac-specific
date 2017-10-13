@@ -21,7 +21,8 @@ import org.apache.log4j.Logger;
 
 import ca.nrc.cadc.caom2.artifactsync.ArtifactStore;
 import ca.nrc.cadc.net.TransientException;
-import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacChecksumManagement;
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacChecksumPersistance;
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
 
 /**
  * ESAC Implementation of the ArtifactStore interface.
@@ -34,11 +35,12 @@ import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacChecksumManagement;
 public class EsacArtifactStorage implements ArtifactStore {
 
 	private static final Logger log = Logger.getLogger(EsacArtifactStorage.class.getName());
-
-	String dataURL;
+	private static String filesLocation = null;
+	protected static final String FILES_LOCATION = "caom2.artifactsync.repository.root";
 
 	public EsacArtifactStorage() throws IllegalArgumentException, SecurityException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException, SQLException, PropertyVetoException {
+		filesLocation = ConfigProperties.getInstance().getProperty(FILES_LOCATION);
 	}
 
 	@Override
@@ -50,9 +52,8 @@ public class EsacArtifactStorage implements ArtifactStore {
 		init();
 		boolean result = false;
 		if (checksum != null) {
-			result = EsacChecksumManagement.getInstance().select(artifactURI, checksum);
+			result = EsacChecksumPersistance.getInstance().select(artifactURI, checksum);
 		}
-		log.debug("after select " + result);
 		return result;
 	}
 
@@ -68,16 +69,21 @@ public class EsacArtifactStorage implements ArtifactStore {
 			try {
 				if (saveFile(artifactURI, input)) {
 					String md5 = calculateMD5Sum(parsePath(artifactURI.toString()));
+					URI md5Uri = new URI(md5);
 					log.debug("CHECKSUM: calculated md5 from " + artifactURI + " = " + md5);
 					log.debug("CHECKSUM: expected md5 from " + artifactURI + " = " + checksum);
 					if (checksum == null || md5.equals(checksum.toString())) {
-						EsacChecksumManagement.getInstance().upsert(artifactURI, checksum);
+						EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
 					}
 				}
 			} catch (Exception e) {
 				throw new AccessControlException(e.getMessage());
 			}
 		}
+	}
+
+	public static String getFilesLocation() {
+		return filesLocation;
 	}
 
 	private boolean saveFile(URI artifactURI, InputStream input) throws IOException {
@@ -90,13 +96,14 @@ public class EsacArtifactStorage implements ArtifactStore {
 		try {
 			Files.createDirectories(pathToFile);
 		} catch (IOException e1) {
-			log.error(e1.getStackTrace());
+			log.error(e1.getMessage());
 			throw e1;
 		}
 		log.debug("saveFile ********************** directory " + pathToFile + " created");
 		FileOutputStream fos = null;
+		File f = null;
 		try {
-			File f = new File(path);
+			f = new File(path);
 
 			fos = new FileOutputStream(f);
 
@@ -109,14 +116,14 @@ public class EsacArtifactStorage implements ArtifactStore {
 			log.debug("saveFile ********************** file " + f.getName() + " created");
 
 		} catch (IOException ex) {
-			log.error(ex.getStackTrace());
-			System.exit(1);
+			log.error(ex.getMessage());
+			throw ex;
 		} finally {
 			if (fos != null) {
 				try {
 					fos.close();
 				} catch (IOException e) {
-					log.error(e.getStackTrace());
+					log.error(e.getMessage());
 					throw e;
 				}
 			}
@@ -136,10 +143,8 @@ public class EsacArtifactStorage implements ArtifactStore {
 		String second = name.substring(1, 4);
 		String third = name.substring(4, 6);
 		String fileName = parts[3];
-		String root = EsacChecksumManagement.getFilesLocation().endsWith("/")
-				? EsacChecksumManagement.getFilesLocation().substring(0,
-						EsacChecksumManagement.getFilesLocation().length() - 1)
-				: EsacChecksumManagement.getFilesLocation();
+		String root = getFilesLocation().endsWith("/")
+				? getFilesLocation().substring(0, getFilesLocation().length() - 1) : getFilesLocation();
 		String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first + "/" + second + "/" + third + "/"
 				+ fileName;
 		return path;
