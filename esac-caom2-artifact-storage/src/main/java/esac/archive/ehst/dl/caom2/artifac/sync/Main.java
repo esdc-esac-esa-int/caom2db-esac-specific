@@ -7,6 +7,11 @@ import ca.nrc.cadc.util.ArgumentMap;
 import ca.nrc.cadc.util.Log4jInit;
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
 
+/**
+ *
+ * @author jduran
+ *
+ */
 public class Main {
 
 	private static Logger log = Logger.getLogger(esac.archive.ehst.dl.caom2.artifac.sync.Main.class);
