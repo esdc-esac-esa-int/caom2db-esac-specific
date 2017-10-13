@@ -74,6 +74,9 @@ public class EsacArtifactStorage implements ArtifactStore {
 					log.debug("CHECKSUM: expected md5 from " + artifactURI + " = " + checksum);
 					if (checksum == null || md5.equals(checksum.toString())) {
 						EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
+					} else {
+						throw new TransientException("Mismatch between received checksum (" + checksum
+								+ ") and the calculeted one (" + md5 + ").");
 					}
 				}
 			} catch (Exception e) {
