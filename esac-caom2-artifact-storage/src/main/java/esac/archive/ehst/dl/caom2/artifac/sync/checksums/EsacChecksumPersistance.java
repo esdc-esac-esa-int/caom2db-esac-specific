@@ -1,5 +1,6 @@
 package esac.archive.ehst.dl.caom2.artifac.sync.checksums;
 
+import java.beans.PropertyVetoException;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -45,6 +46,13 @@ public class EsacChecksumPersistance {
 			setChecksumTable(ConfigProperties.getInstance().getProperty(TABLENAME));
 			setChecksumArtifactColumnName(ConfigProperties.getInstance().getProperty(COLUMN_ARTIFACT));
 			setChecksumChecksumColumnName(ConfigProperties.getInstance().getProperty(COLUMN_CHECKSUM));
+
+			boolean tableExists = checkIfTableExists(EsacChecksumPersistance.getInstance().getChecksumSchema(),
+					EsacChecksumPersistance.getInstance().getChecksumTable());
+			if (!tableExists) {
+				throw new Exception("Table " + getChecksumSchema() + "." + getChecksumTable()
+						+ " doesn't exist. Check configuration file and permissions in database");
+			}
 
 		} catch (Exception e) {
 			log.error("Unexpected exception constructing EsacChecksumPersistance: " + e.getMessage());
@@ -176,6 +184,50 @@ public class EsacChecksumPersistance {
 			}
 		}
 		return result;
+	}
+
+	private boolean checkIfTableExists(String checksumSchema, String checksumTable)
+			throws SQLException, PropertyVetoException {
+		String query = "select exists (select 1 from information_schema.tables where table_schema = '" + checksumSchema
+				+ "' and table_name = '" + checksumTable + "')";
+		log.debug("query = " + query);
+		Connection con = null;
+		Statement stmt = null;
+		ResultSet rs = null;
+		boolean exists = false;
+
+		try {
+			con = JdbcSingleton.getInstance().getConnection();
+			stmt = con.createStatement();
+			rs = stmt.executeQuery(query);
+			if (rs.next()) {
+				exists = rs.getBoolean(1);
+			}
+			log.debug("exists = " + exists);
+
+		} catch (Exception ex) {
+			throw new RuntimeException("Unexpected exception when selecting: " + ex.getMessage());
+		} finally {
+			if (rs != null) {
+				try {
+					rs.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (stmt != null) {
+				try {
+					stmt.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+				}
+			}
+		}
+		return exists;
 	}
 
 	public String getChecksumSchema() {
