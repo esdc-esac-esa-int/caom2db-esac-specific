@@ -16,6 +16,7 @@ import java.security.AccessControlException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.log4j.Logger;
 
@@ -89,34 +90,47 @@ public class EsacArtifactStorage implements ArtifactStore {
 		return filesLocation;
 	}
 
-	private boolean saveFile(URI artifactURI, InputStream input) throws IOException {
+	private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
 
 		String path = parsePath(artifactURI.toString());
-		log.debug("saveFile ********************** " + path);
+		log.debug("saveFile ********************** path '" + path + "'");
 		Path pathToFile = Paths.get(path);
 		pathToFile = pathToFile.getParent();
 
+		boolean preview = false;
+		try {
+			preview = pathToFile.getName(pathToFile.getNameCount() - 1).toString().contains("prev");
+		} catch (IllegalArgumentException iae) {
+			log.error(iae.getMessage());
+			throw iae;
+		}
 		try {
 			Files.createDirectories(pathToFile);
 		} catch (IOException e1) {
 			log.error(e1.getMessage());
 			throw e1;
 		}
-		log.debug("saveFile ********************** directory " + pathToFile + " created");
+		log.debug("saveFile ********************** directory '" + pathToFile + "' created");
 		FileOutputStream fos = null;
 		File f = null;
+		GZIPOutputStream gzipOs = null;
 		try {
 			f = new File(path);
 
 			fos = new FileOutputStream(f);
+			if (!preview)
+				gzipOs = new GZIPOutputStream(fos);
 
 			int read = 0;
 			byte[] bytes = new byte[1024];
 
 			while ((read = input.read(bytes)) != -1) {
-				fos.write(bytes, 0, read);
+				if (!preview)
+					gzipOs.write(bytes, 0, read);
+				else
+					fos.write(bytes, 0, read);
 			}
-			log.debug("saveFile ********************** file " + f.getName() + " created");
+			log.debug("saveFile ********************** file '" + f.getName() + "' created");
 
 		} catch (IOException ex) {
 			log.error(ex.getMessage());
@@ -125,6 +139,14 @@ public class EsacArtifactStorage implements ArtifactStore {
 			if (fos != null) {
 				try {
 					fos.close();
+				} catch (IOException e) {
+					log.error(e.getMessage());
+					throw e;
+				}
+			}
+			if (gzipOs != null) {
+				try {
+					gzipOs.close();
 				} catch (IOException e) {
 					log.error(e.getMessage());
 					throw e;

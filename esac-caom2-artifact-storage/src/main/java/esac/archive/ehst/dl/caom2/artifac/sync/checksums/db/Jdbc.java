@@ -6,6 +6,8 @@ import java.sql.SQLException;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacChecksumPersistance;
+
 /**
  *
  * @author jduran
@@ -13,15 +15,12 @@ import com.mchange.v2.c3p0.ComboPooledDataSource;
  */
 public class Jdbc {
 
-	protected static final String DB_URL_PROP = "esac.tools.db.url";
-	protected static final String DB_DRIVER_PROP = "esac.tools.db.driver";
-	protected final static String DB_USER_PROP = "esac.tools.db.username";
 	// protected final static String DB_PWD_PROP = "esac.tools.db.password";
 
 	protected ComboPooledDataSource cpds;
 
 	public String getOwner() {
-		return ConfigProperties.getInstance().getProperty(DB_USER_PROP);
+		return EsacChecksumPersistance.getInstance().getDbusername();
 	}
 
 	public synchronized Connection getConnection() throws SQLException {
@@ -30,10 +29,10 @@ public class Jdbc {
 
 	protected Jdbc() throws PropertyVetoException {
 
-		String driver = ConfigProperties.getInstance().getProperty(DB_DRIVER_PROP);
-		String owner = ConfigProperties.getInstance().getProperty(DB_USER_PROP);
+		String driver = EsacChecksumPersistance.getInstance().getDbdriver();
+		String owner = EsacChecksumPersistance.getInstance().getDbusername();
 		String password = ConfigProperties.getInstance().getDbPass();
-		String url = ConfigProperties.getInstance().getProperty(DB_URL_PROP);
+		String url = EsacChecksumPersistance.getInstance().getDburl();
 
 		cpds = new ComboPooledDataSource();
 		cpds.setDriverClass(driver); // loads the jdbc driver
