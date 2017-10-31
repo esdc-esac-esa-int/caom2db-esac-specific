@@ -27,22 +27,11 @@ public class EsacChecksumPersistance {
 	protected static final String COLUMN_ARTIFACT = "caom2.artifactsync.checksumTable.columnArtifact";
 	protected static final String COLUMN_CHECKSUM = "caom2.artifactsync.checksumTable.columnChecksum";
 
-	protected static final String DB_URL_PROP = "esac.tools.db.url";
-	protected static final String DB_HOST_PROP = "esac.tools.db.dbhost";
-	protected static final String DB_NAME_PROP = "esac.tools.db.dbname";
-	protected static final String DB_DRIVER_PROP = "esac.tools.db.driver";
-	protected final static String DB_USER_PROP = "esac.tools.db.username";
-
 	private static String checksumCreateScript = null;
 	private static String checksumSchema = null;
 	private static String checksumTable = null;
 	private static String checksumArtifactColumnName = null;
 	private static String checksumChecksumColumnName = null;
-	private static String dbusername = null;
-	private static String dbhost = null;
-	private static String dburl = null;
-	private static String dbdriver = null;
-	private static String dbname = null;
 
 	private static EsacChecksumPersistance instance = null;
 
@@ -61,18 +50,13 @@ public class EsacChecksumPersistance {
 			setChecksumTable(ConfigProperties.getInstance().getProperty(TABLENAME));
 			setChecksumArtifactColumnName(ConfigProperties.getInstance().getProperty(COLUMN_ARTIFACT));
 			setChecksumChecksumColumnName(ConfigProperties.getInstance().getProperty(COLUMN_CHECKSUM));
-			setDbusername(ConfigProperties.getInstance().getProperty(DB_USER_PROP));
-			setDburl(ConfigProperties.getInstance().getProperty(DB_URL_PROP));
-			setDbdriver(ConfigProperties.getInstance().getProperty(DB_DRIVER_PROP));
-			setDbhost(ConfigProperties.getInstance().getProperty(DB_HOST_PROP));
-			setDbname(ConfigProperties.getInstance().getProperty(DB_NAME_PROP));
 
-			boolean tableExists = checkIfTableExists(EsacChecksumPersistance.getInstance().getChecksumSchema(),
-					EsacChecksumPersistance.getInstance().getChecksumTable());
+			boolean tableExists = checkIfTableExists(getChecksumSchema(), getChecksumTable());
 			if (!tableExists) {
-				createChecksumTable(dbusername, dbname, dbhost, checksumCreateScript);
-				tableExists = checkIfTableExists(EsacChecksumPersistance.getInstance().getChecksumSchema(),
-						EsacChecksumPersistance.getInstance().getChecksumTable());
+				createChecksumTable(JdbcSingleton.getInstance().getDbusername(),
+						JdbcSingleton.getInstance().getDbname(), JdbcSingleton.getInstance().getDbhost(),
+						checksumCreateScript);
+				tableExists = checkIfTableExists(getChecksumSchema(), getChecksumTable());
 				if (!tableExists) {
 					throw new Exception("Table " + getChecksumSchema() + "." + getChecksumTable()
 							+ " doesn't exist. Check configuration file and permissions in database");
@@ -307,45 +291,4 @@ public class EsacChecksumPersistance {
 	private static void setChecksumCreateScript(String checksumCreateScript) {
 		EsacChecksumPersistance.checksumCreateScript = checksumCreateScript;
 	}
-
-	public String getDbusername() {
-		return dbusername;
-	}
-
-	private static void setDbusername(String dbusername) {
-		EsacChecksumPersistance.dbusername = dbusername;
-	}
-
-	public String getDburl() {
-		return dburl;
-	}
-
-	private static void setDburl(String dburl) {
-		EsacChecksumPersistance.dburl = dburl;
-	}
-
-	public String getDbdriver() {
-		return dbdriver;
-	}
-
-	private static void setDbdriver(String dbdriver) {
-		EsacChecksumPersistance.dbdriver = dbdriver;
-	}
-
-	public String getDbhost() {
-		return dbhost;
-	}
-
-	private static void setDbhost(String dbhost) {
-		EsacChecksumPersistance.dbhost = dbhost;
-	}
-
-	public String getDbname() {
-		return dbname;
-	}
-
-	private static void setDbname(String dbname) {
-		EsacChecksumPersistance.dbname = dbname;
-	}
-
 }
