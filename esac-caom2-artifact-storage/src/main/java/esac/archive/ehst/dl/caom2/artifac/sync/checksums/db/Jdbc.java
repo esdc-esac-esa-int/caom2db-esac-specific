@@ -110,5 +110,4 @@ public class Jdbc {
 	private void setDbport(Integer dbport) {
 		Jdbc.dbport = dbport;
 	}
-
 }

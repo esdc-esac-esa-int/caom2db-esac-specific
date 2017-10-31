@@ -83,14 +83,15 @@ public class EsacChecksumPersistance {
 					+ checksumCreateScript;
 			log.debug("****************** sql = " + sql);
 			Process p = Runtime.getRuntime().exec(sql);
+			log.debug("****************** waiting for the creatingg process to finish");
+			p.waitFor();
+			int res = p.exitValue();
 			BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
 			while ((line = input.readLine()) != null) {
 				log.debug(line);
 			}
 			input.close();
-			log.debug("****************** waiting for the creatingg process to finish");
-			p.waitFor();
-			log.debug("****************** checksum table created?");
+			log.debug("****************** checksum table created? result = " + res);
 
 		} catch (Exception err) {
 			log.error("Unexpected exception creating checksum table: " + err.getMessage());
