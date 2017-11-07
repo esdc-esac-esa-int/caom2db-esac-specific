@@ -93,17 +93,13 @@ public class EsacArtifactStorage implements ArtifactStore {
 	private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
 
 		String path = parsePath(artifactURI.toString());
-		log.debug("saveFile ********************** path '" + path + "'");
+		boolean preview = path.endsWith(".gz");
+
 		Path pathToFile = Paths.get(path);
 		pathToFile = pathToFile.getParent();
 
-		boolean preview = false;
-		try {
-			preview = pathToFile.getName(pathToFile.getNameCount() - 1).toString().contains("prev");
-		} catch (IllegalArgumentException iae) {
-			log.error(iae.getMessage());
-			throw iae;
-		}
+		log.debug("saveFile ********************** path '" + path + "'");
+
 		try {
 			Files.createDirectories(pathToFile);
 		} catch (IOException e1) {
@@ -130,6 +126,12 @@ public class EsacArtifactStorage implements ArtifactStore {
 				else
 					fos.write(bytes, 0, read);
 			}
+
+			if (!preview)
+				gzipOs.flush();
+			else
+				fos.flush();
+
 			log.debug("saveFile ********************** file '" + f.getName() + "' created");
 
 		} catch (IOException ex) {
@@ -139,17 +141,19 @@ public class EsacArtifactStorage implements ArtifactStore {
 			if (fos != null) {
 				try {
 					fos.close();
+					fos = null;
+					System.gc();
 				} catch (IOException e) {
 					log.error(e.getMessage());
-					throw e;
 				}
 			}
 			if (gzipOs != null) {
 				try {
 					gzipOs.close();
+					gzipOs = null;
+					System.gc();
 				} catch (IOException e) {
 					log.error(e.getMessage());
-					throw e;
 				}
 			}
 		}
@@ -168,6 +172,9 @@ public class EsacArtifactStorage implements ArtifactStore {
 		String second = name.substring(1, 4);
 		String third = name.substring(4, 6);
 		String fileName = parts[3];
+		if (!fileName.contains("prev")) {
+			fileName += ".gz";
+		}
 		String root = getFilesLocation().endsWith("/")
 				? getFilesLocation().substring(0, getFilesLocation().length() - 1) : getFilesLocation();
 		String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first + "/" + second + "/" + third + "/"
