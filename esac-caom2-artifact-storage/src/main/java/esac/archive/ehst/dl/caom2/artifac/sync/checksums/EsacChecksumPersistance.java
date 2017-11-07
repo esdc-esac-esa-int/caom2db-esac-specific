@@ -1,8 +1,6 @@
 package esac.archive.ehst.dl.caom2.artifac.sync.checksums;
 
 import java.beans.PropertyVetoException;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -28,12 +26,14 @@ public class EsacChecksumPersistance {
 	protected static final String TABLENAME = "caom2.artifactsync.checksumTable.table";
 	protected static final String COLUMN_ARTIFACT = "caom2.artifactsync.checksumTable.columnArtifact";
 	protected static final String COLUMN_CHECKSUM = "caom2.artifactsync.checksumTable.columnChecksum";
+	protected final static String PK = "caom2.artifactsync.checksumTable.pk";
 
 	private static String checksumCreateScript = null;
 	private static String checksumSchema = null;
 	private static String checksumTable = null;
 	private static String checksumArtifactColumnName = null;
 	private static String checksumChecksumColumnName = null;
+	private static String checksumPk = null;
 
 	private static EsacChecksumPersistance instance = null;
 
@@ -52,13 +52,12 @@ public class EsacChecksumPersistance {
 			setChecksumTable(ConfigProperties.getInstance().getProperty(TABLENAME));
 			setChecksumArtifactColumnName(ConfigProperties.getInstance().getProperty(COLUMN_ARTIFACT));
 			setChecksumChecksumColumnName(ConfigProperties.getInstance().getProperty(COLUMN_CHECKSUM));
+			setChecksumPk(ConfigProperties.getInstance().getProperty(PK));
 
 			boolean tableExists = checkIfTableExists(getChecksumSchema(), getChecksumTable());
 			if (!tableExists) {
 				JdbcSingleton.getInstance();
-				createChecksumTable(JdbcSingleton.getInstance().getDbusername(),
-						JdbcSingleton.getInstance().getDbname(), JdbcSingleton.getInstance().getDbhost(),
-						JdbcSingleton.getInstance().getDbport(), checksumCreateScript);
+				createChecksumTable();
 				tableExists = checkIfTableExists(getChecksumSchema(), getChecksumTable());
 				if (!tableExists) {
 					throw new Exception("Table " + getChecksumSchema() + "." + getChecksumTable()
@@ -73,30 +72,41 @@ public class EsacChecksumPersistance {
 		}
 	}
 
-	private void createChecksumTable(String user, String dbName, String host, Integer dbport,
-			String checksumCreateScript) {
+	private void createChecksumTable() throws SQLException {
+		Connection con = null;
+		Statement stmt = null;
+		Statement stmt2 = null;
 		try {
+			con = JdbcSingleton.getInstance().getConnection();
 			log.debug("****************** creating checksum table");
 
-			String line = null;
-			String sql = "psql -w -U " + user + " -d " + dbName + " -h " + host + " -p " + dbport + " -f "
-					+ checksumCreateScript;
-			log.debug("****************** sql = " + sql);
-			Process p = Runtime.getRuntime().exec(sql);
-			log.debug("****************** waiting for the creatingg process to finish");
-			p.waitFor();
-			int res = p.exitValue();
-			BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			while ((line = input.readLine()) != null) {
-				log.debug(line);
-			}
-			input.close();
-			log.debug("****************** checksum table created? result = " + res);
+			String create = "create table " + checksumSchema + "." + checksumTable + " (" + checksumArtifactColumnName
+					+ " character varying(1024) not null, " + checksumChecksumColumnName
+					+ " character varying(64), constraint " + checksumPk + " primary key (" + checksumArtifactColumnName
+					+ ")) with (OIDS=FALSE); alter table " + checksumSchema + "." + checksumTable + " owner to "
+					+ JdbcSingleton.getInstance().getOwner() + ";";
+
+			String index = "create index on " + checksumSchema + "." + checksumTable + " using btree ("
+					+ checksumChecksumColumnName + ");";
+			stmt = con.createStatement();
+			stmt.execute(create);
+			stmt2 = con.createStatement();
+			stmt2.execute(index);
 
 		} catch (Exception err) {
 			log.error("Unexpected exception creating checksum table: " + err.getMessage());
 			err.printStackTrace();
 			System.exit(2);
+		} finally {
+			if (stmt != null) {
+				stmt.close();
+			}
+			if (stmt2 != null) {
+				stmt2.close();
+			}
+			if (con != null) {
+				con.close();
+			}
 		}
 	}
 
@@ -308,5 +318,13 @@ public class EsacChecksumPersistance {
 
 	private static void setChecksumCreateScript(String checksumCreateScript) {
 		EsacChecksumPersistance.checksumCreateScript = checksumCreateScript;
+	}
+
+	public String getChecksumPk() {
+		return checksumPk;
+	}
+
+	private static void setChecksumPk(String checksumPk) {
+		EsacChecksumPersistance.checksumPk = checksumPk;
 	}
 }
