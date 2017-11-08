@@ -16,7 +16,6 @@ import java.security.AccessControlException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.zip.GZIPOutputStream;
 
 import org.apache.log4j.Logger;
 
@@ -93,7 +92,6 @@ public class EsacArtifactStorage implements ArtifactStore {
 	private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
 
 		String path = parsePath(artifactURI.toString());
-		boolean preview = path.endsWith(".gz");
 
 		Path pathToFile = Paths.get(path);
 		pathToFile = pathToFile.getParent();
@@ -109,28 +107,19 @@ public class EsacArtifactStorage implements ArtifactStore {
 		log.debug("saveFile ********************** directory '" + pathToFile + "' created");
 		FileOutputStream fos = null;
 		File f = null;
-		GZIPOutputStream gzipOs = null;
 		try {
 			f = new File(path);
 
 			fos = new FileOutputStream(f);
-			if (!preview)
-				gzipOs = new GZIPOutputStream(fos);
 
 			int read = 0;
 			byte[] bytes = new byte[1024];
 
 			while ((read = input.read(bytes)) != -1) {
-				if (!preview)
-					gzipOs.write(bytes, 0, read);
-				else
-					fos.write(bytes, 0, read);
+				fos.write(bytes, 0, read);
 			}
 
-			if (!preview)
-				gzipOs.flush();
-			else
-				fos.flush();
+			fos.flush();
 
 			log.debug("saveFile ********************** file '" + f.getName() + "' created");
 
@@ -142,15 +131,6 @@ public class EsacArtifactStorage implements ArtifactStore {
 				try {
 					fos.close();
 					fos = null;
-					System.gc();
-				} catch (IOException e) {
-					log.error(e.getMessage());
-				}
-			}
-			if (gzipOs != null) {
-				try {
-					gzipOs.close();
-					gzipOs = null;
 					System.gc();
 				} catch (IOException e) {
 					log.error(e.getMessage());
@@ -172,9 +152,7 @@ public class EsacArtifactStorage implements ArtifactStore {
 		String second = name.substring(1, 4);
 		String third = name.substring(4, 6);
 		String fileName = parts[3];
-		if (!fileName.contains("prev")) {
-			fileName += ".gz";
-		}
+
 		String root = getFilesLocation().endsWith("/")
 				? getFilesLocation().substring(0, getFilesLocation().length() - 1) : getFilesLocation();
 		String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first + "/" + second + "/" + third + "/"

@@ -75,7 +75,6 @@ public class EsacChecksumPersistance {
 	private void createChecksumTable() throws SQLException {
 		Connection con = null;
 		Statement stmt = null;
-		Statement stmt2 = null;
 		try {
 			con = JdbcSingleton.getInstance().getConnection();
 			log.debug("****************** creating checksum table");
@@ -87,11 +86,13 @@ public class EsacChecksumPersistance {
 					+ JdbcSingleton.getInstance().getOwner() + ";";
 
 			String index = "create index on " + checksumSchema + "." + checksumTable + " using btree ("
+					+ checksumArtifactColumnName + ");";
+			String index2 = "create index on " + checksumSchema + "." + checksumTable + " using btree ("
 					+ checksumChecksumColumnName + ");";
 			stmt = con.createStatement();
 			stmt.execute(create);
-			stmt2 = con.createStatement();
-			stmt2.execute(index);
+			stmt.execute(index);
+			stmt.execute(index2);
 
 		} catch (Exception err) {
 			log.error("Unexpected exception creating checksum table: " + err.getMessage());
@@ -100,9 +101,6 @@ public class EsacChecksumPersistance {
 		} finally {
 			if (stmt != null) {
 				stmt.close();
-			}
-			if (stmt2 != null) {
-				stmt2.close();
 			}
 			if (con != null) {
 				con.close();
