@@ -80,9 +80,10 @@ public class EsacArtifactStorage implements ArtifactStore {
 					}
 				}
 			} catch (Exception e) {
-				throw new AccessControlException(e.getMessage());
+				throw new AccessControlException(e.getCause().getMessage());
 			}
 		}
+
 	}
 
 	public static String getFilesLocation() {
@@ -90,8 +91,11 @@ public class EsacArtifactStorage implements ArtifactStore {
 	}
 
 	private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
+		log.debug("entering saveFile for ********************** " + artifactURI.toString());
 
 		String path = parsePath(artifactURI.toString());
+
+		log.debug("saveFile ********************** path " + path);
 
 		Path pathToFile = Paths.get(path);
 		pathToFile = pathToFile.getParent();
@@ -140,8 +144,30 @@ public class EsacArtifactStorage implements ArtifactStore {
 		return true;
 	}
 
+	// private String parsePath(String artifact) {
+	// // example of artifact -> mast:HST/product/o6h086a6q/o6h086a6j_jit.fits
+	// String mast = artifact.split("[:]")[0];
+	// String rest = artifact.substring(mast.length() + 1);
+	// String[] parts = rest.split("[/]");
+	// String hst = parts[0];
+	// String product = parts[1];
+	// String name = parts[2];
+	// char first = name.charAt(0);
+	// String second = name.substring(1, 4);
+	// String third = name.substring(4, 6);
+	// String fileName = parts[3];
+	//
+	// String root = getFilesLocation().endsWith("/")
+	// ? getFilesLocation().substring(0, getFilesLocation().length() - 1) :
+	// getFilesLocation();
+	// String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first
+	// + "/" + second + "/" + third + "/"
+	// + fileName;
+	// return path;
+	// }
+
 	private String parsePath(String artifact) {
-		// example of artifact -> mast:HST/product/o6h086a6q/o6h086a6j_jit.fits
+		// modification -> mast:HST/product/x0bi0302t_dgr.fits
 		String mast = artifact.split("[:]")[0];
 		String rest = artifact.substring(mast.length() + 1);
 		String[] parts = rest.split("[/]");
@@ -151,12 +177,11 @@ public class EsacArtifactStorage implements ArtifactStore {
 		char first = name.charAt(0);
 		String second = name.substring(1, 4);
 		String third = name.substring(4, 6);
-		String fileName = parts[3];
 
 		String root = getFilesLocation().endsWith("/")
 				? getFilesLocation().substring(0, getFilesLocation().length() - 1) : getFilesLocation();
 		String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first + "/" + second + "/" + third + "/"
-				+ fileName;
+				+ name;
 		return path;
 	}
 
