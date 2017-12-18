@@ -44,6 +44,7 @@ public class Main {
 		if (am.isSet("h") || am.isSet("help")) {
 			usage();
 			System.exit(0);
+			System.exit(0);
 		}
 
 		ca.nrc.cadc.caom2.artifactsync.Main.main(args);
