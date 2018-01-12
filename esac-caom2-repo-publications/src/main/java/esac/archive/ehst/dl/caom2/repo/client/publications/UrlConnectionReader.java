@@ -11,6 +11,11 @@ import javax.net.ssl.HttpsURLConnection;
 
 import org.apache.log4j.Logger;
 
+/**
+ *
+ * @author jduran
+ *
+ */
 public class UrlConnectionReader {
     private static final Logger log = Logger.getLogger(UrlConnectionReader.class);
 

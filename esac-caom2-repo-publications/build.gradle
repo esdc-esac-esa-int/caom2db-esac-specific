@@ -18,7 +18,7 @@ group = 'org.opencadc'
 
 version = '1.0'
 
-mainClassName = 'ca.nrc.cadc.caom2.repo.client.Main'
+mainClassName = 'esac.archive.ehst.dl.caom2.repo.client.publications.Main'
 
 dependencies {
     compile 'log4j:log4j:1.2.+'
@@ -31,7 +31,12 @@ dependencies {
 
     compile 'org.opencadc:cadc-registry:[1.2,)'
     compile 'org.opencadc:cadc-vosi:[1.0.1,2.0)'
-
+	compile 'com.googlecode.json-simple:json-simple:[1.1,)'
+    compile 'org.postgresql:postgresql:9.4.1209.jre7'
+    compile 'com.mchange:c3p0:0.9.5.2'
+    
+    compile 'org.hibernate:hibernate-core:5.2.12.Final'
+    compile 'org.hibernate:hibernate-annotations:3.5.6-Final'
     
     testCompile 'junit:junit:4.+'
     testCompile 'org.easymock:easymock:[3.2,4.0)'
