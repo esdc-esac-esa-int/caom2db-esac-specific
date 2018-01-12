@@ -139,4 +139,5 @@ public class Proposal implements java.io.Serializable {
     public void setNumObservations(Integer numObservations) {
         this.numObservations = numObservations;
     }
+
 }

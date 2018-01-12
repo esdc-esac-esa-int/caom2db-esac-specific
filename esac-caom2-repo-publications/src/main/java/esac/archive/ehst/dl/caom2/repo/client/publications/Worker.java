@@ -37,7 +37,6 @@ public class Worker implements Callable<Proposal> {
         JSONArray bibcodes = (JSONArray) jsonProposal.get("bibcode");
         for (Object bibcode : bibcodes) {
             String bib = (String) bibcode;
-
         }
 
         return proposal;

@@ -2,8 +2,8 @@ package esac.archive.ehst.dl.caom2.repo.client.publications.entities;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -17,11 +17,7 @@ import javax.persistence.UniqueConstraint;
 @Entity
 @Table(name = "publication", catalog = "hst", uniqueConstraints = {@UniqueConstraint(columnNames = "publication_oid"),
         @UniqueConstraint(columnNames = "bib_code")})
-public class Publication implements java.io.Serializable {
-    /**
-     *
-     */
-    private static final long serialVersionUID = 821369852055644239L;
+public class Publication {
     private Integer publicationOid;
     private String bibcode;
     private String title;
@@ -34,7 +30,7 @@ public class Publication implements java.io.Serializable {
     private Integer numberOfObservations = 0;
     private Integer numberOfProposals = 0;
 
-    private Set<Proposal> proposals = new HashSet<Proposal>();
+    private List<Proposal> proposals = new ArrayList<Proposal>();
 
     public Publication() {
 
@@ -131,11 +127,11 @@ public class Publication implements java.io.Serializable {
     }
 
     @ManyToMany(fetch = FetchType.LAZY, mappedBy = "publications")
-    public Set<Proposal> getProposals() {
+    public List<Proposal> getProposals() {
         return proposals;
     }
 
-    public void setProposals(Set<Proposal> proposals) {
+    public void setProposals(List<Proposal> proposals) {
         this.proposals = proposals;
     }
 }
