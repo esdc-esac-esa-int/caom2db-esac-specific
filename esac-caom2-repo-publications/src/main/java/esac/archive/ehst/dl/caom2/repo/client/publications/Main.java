@@ -4,7 +4,6 @@ import ca.nrc.cadc.util.ArgumentMap;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,9 +23,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
 import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.springframework.transaction.annotation.Transactional;
 
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.JdbcSingleton;
@@ -44,6 +41,7 @@ public class Main {
     private static SessionFactory factory = null;
 
     @SuppressWarnings("rawtypes")
+    @Transactional(rollbackFor = Exception.class)
     public static void main(String[] args) {
         boolean correct = true;
 
@@ -102,31 +100,33 @@ public class Main {
 
         ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password);
 
+        log.info("config initiated");
+
         List<Callable<Proposal>> tasks = new ArrayList<>();
         List<Proposal> proposalList = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
-            String result = ProposalsReader.getInstance().read(url);
-            //            System.out.println(result);
-            //            System.out.println("Number of characters found = " + result.length());
+            //            String result = ProposalsReader.getInstance().read(url);
 
-            JSONParser parser = new JSONParser();
-            Object object = parser.parse(result);
-            proposals = (JSONArray) object;
-            System.out.println("Number of proposals found = " + proposals.size());
+            //            JSONParser parser = new JSONParser();
+            //            Object object = parser.parse(result);
+            //            proposals = (JSONArray) object;
+            //            log.info("number of proposals found in service = " + proposals.size());
 
-            for (Object o : proposals) {
-                tasks.add(new Worker((JSONObject) o));
-            }
+            //            for (Object o : proposals) {
+            //                tasks.add(new Worker((JSONObject) o));
+            //            }
 
-        } catch (IOException | ParseException | ClassCastException e) {
+        } catch (ClassCastException e) {
             correct = false;
-            e.printStackTrace();
+            log.error("error parsing content from service " + e.getMessage());
         }
 
         if (!correct) {
             System.exit(1);
         }
+
+        log.info("service read");
 
         ExecutorService taskExecutor = null;
         try {
@@ -150,6 +150,8 @@ public class Main {
             System.exit(1);
         }
 
+        log.info("proposals read from service instantiated");
+
         try {
             correct = tablesExist();
         } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
@@ -160,17 +162,20 @@ public class Main {
         if (!correct) {
             System.exit(1);
         }
+        log.info("tables exist");
 
         Session session = null;
         Transaction transaction = null;
         List currentProposals = null;
         try {
+            log.debug("opening hibernate session");
             session = factory.openSession();
             transaction = session.beginTransaction();
-            currentProposals = session.createQuery("from proposal").list();
+            currentProposals = session.createQuery("from Proposal").list();
+            log.info("number of proposals found in database = " + currentProposals.size());
 
         } catch (Throwable ex) {
-            System.err.println("Failed to create sessionFactory object." + ex);
+            log.error("Failed to create sessionFactory object." + ex);
             correct = false;
         } finally {
             if (transaction != null) {
@@ -185,8 +190,11 @@ public class Main {
             System.exit(1);
         }
 
-        for (Proposal p : proposalList) {
+        log.info("porposals read from database");
 
+        for (Object p : currentProposals) {
+            Proposal prop = (Proposal) p;
+            log.info("porposal read from database with prop_id = " + prop.getPropId());
         }
     }
 
@@ -227,7 +235,7 @@ public class Main {
                 if (existsPublications) {
                     rs = stmt.executeQuery(queryPropPub);
                     if (rs.next()) {
-                        existsPublications = rs.getBoolean(1);
+                        existsPropPub = rs.getBoolean(1);
                     }
                     log.debug(ConfigProperties.getInstance().getSchema() + ".publication_proposal exists = " + existsPropPub);
                 }

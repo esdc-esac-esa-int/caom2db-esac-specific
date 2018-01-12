@@ -11,7 +11,11 @@
     <property name="hibernate.connection.password">eh2t_r00t</property>
     <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQL94Dialect</property>
     <property name="show_sql">true</property>
+    <property name="hibernate.default_schema">caom2</property>
+    
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication" />
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal" />
+
+
 </session-factory>
 </hibernate-configuration>
