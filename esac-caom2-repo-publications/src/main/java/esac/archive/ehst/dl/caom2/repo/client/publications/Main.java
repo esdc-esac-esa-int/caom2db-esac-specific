@@ -159,8 +159,9 @@ public class Main {
 
         log.info("service read");
 
-        if (proposalsChanged) {
+        if (!proposalsChanged) {
             log.info("no changes in the content provided by the service since last execution");
+        } else {
             ExecutorService taskExecutor = null;
             try {
                 taskExecutor = Executors.newFixedThreadPool(nthreads);
