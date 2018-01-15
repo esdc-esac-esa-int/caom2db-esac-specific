@@ -4,6 +4,12 @@ import ca.nrc.cadc.util.ArgumentMap;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -23,6 +29,9 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
 import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.springframework.transaction.annotation.Transactional;
 
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
@@ -100,24 +109,46 @@ public class Main {
 
         ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password);
 
+        boolean proposalsChanged = false;
         log.info("config initiated");
 
         List<Callable<Proposal>> tasks = new ArrayList<>();
         List<Proposal> proposalList = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
-            //            String result = ProposalsReader.getInstance().read(url);
+            String oldRead = null;
+            String newRead = ProposalsReader.getInstance().read(url);
 
-            //            JSONParser parser = new JSONParser();
-            //            Object object = parser.parse(result);
-            //            proposals = (JSONArray) object;
-            //            log.info("number of proposals found in service = " + proposals.size());
+            File file = new File("lastRead");
+            if (file.exists() && !file.isDirectory()) {
+                try (BufferedReader br = new BufferedReader(new FileReader("lastRead"))) {
+                    oldRead = br.readLine();
+                } catch (IOException e) {
+                    throw e;
+                }
+            }
 
-            //            for (Object o : proposals) {
-            //                tasks.add(new Worker((JSONObject) o));
-            //            }
+            if (!newRead.equals(oldRead)) {
+                proposalsChanged = true;
+            }
 
-        } catch (ClassCastException e) {
+            if (proposalsChanged) {
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter("lastRead"))) {
+                    bw.write(newRead);
+                } catch (IOException e) {
+                    throw e;
+                }
+                JSONParser parser = new JSONParser();
+                Object object = parser.parse(newRead);
+                proposals = (JSONArray) object;
+                log.info("number of proposals found in service = " + proposals.size());
+
+                for (Object o : proposals) {
+                    tasks.add(new Worker((JSONObject) o));
+                }
+            }
+
+        } catch (ClassCastException | IOException | ParseException e) {
             correct = false;
             log.error("error parsing content from service " + e.getMessage());
         }
@@ -128,74 +159,78 @@ public class Main {
 
         log.info("service read");
 
-        ExecutorService taskExecutor = null;
-        try {
-            taskExecutor = Executors.newFixedThreadPool(nthreads);
-            List<Future<Proposal>> futures;
+        if (proposalsChanged) {
+            log.info("no changes in the content provided by the service since last execution");
+            ExecutorService taskExecutor = null;
+            try {
+                taskExecutor = Executors.newFixedThreadPool(nthreads);
+                List<Future<Proposal>> futures;
 
-            futures = taskExecutor.invokeAll(tasks);
+                futures = taskExecutor.invokeAll(tasks);
 
-            for (Future<Proposal> f : futures) {
-                proposalList.add(f.get());
+                for (Future<Proposal> f : futures) {
+                    proposalList.add(f.get());
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                log.error("Error when executing thread in ThreadPool: " + e.getMessage() + " caused by: " + e.getCause().toString());
+                correct = false;
+            } finally {
+                if (taskExecutor != null) {
+                    taskExecutor.shutdown();
+                }
             }
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("Error when executing thread in ThreadPool: " + e.getMessage() + " caused by: " + e.getCause().toString());
-            correct = false;
-        } finally {
-            if (taskExecutor != null) {
-                taskExecutor.shutdown();
+            if (!correct) {
+                System.exit(1);
+            }
+
+            log.info("proposals read from service instantiated");
+
+            try {
+                correct = tablesExist();
+            } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
+                log.error("Error when checking existency of the tables or creating them: " + e.getMessage() + " caused by: " + e.getCause().toString());
+                correct = false;
+            }
+
+            if (!correct) {
+                System.exit(1);
+            }
+            log.info("tables exist");
+
+            Session session = null;
+            Transaction transaction = null;
+            List currentProposals = null;
+            try {
+                log.debug("opening hibernate session");
+                session = factory.openSession();
+                transaction = session.beginTransaction();
+                currentProposals = session.createQuery("from Proposal").list();
+                log.info("number of proposals found in database = " + currentProposals.size());
+
+            } catch (Throwable ex) {
+                log.error("Failed to create sessionFactory object." + ex);
+                correct = false;
+            } finally {
+                if (transaction != null) {
+                    transaction.commit();
+                }
+                if (session != null) {
+                    session.close();
+                }
+            }
+
+            if (!correct) {
+                System.exit(1);
+            }
+
+            log.info("porposals read from database");
+
+            for (Object p : currentProposals) {
+                Proposal prop = (Proposal) p;
+                log.info("porposal read from database with prop_id = " + prop.getPropId());
             }
         }
-        if (!correct) {
-            System.exit(1);
-        }
-
-        log.info("proposals read from service instantiated");
-
-        try {
-            correct = tablesExist();
-        } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
-            log.error("Error when checking existency of the tables or creating them: " + e.getMessage() + " caused by: " + e.getCause().toString());
-            correct = false;
-        }
-
-        if (!correct) {
-            System.exit(1);
-        }
-        log.info("tables exist");
-
-        Session session = null;
-        Transaction transaction = null;
-        List currentProposals = null;
-        try {
-            log.debug("opening hibernate session");
-            session = factory.openSession();
-            transaction = session.beginTransaction();
-            currentProposals = session.createQuery("from Proposal").list();
-            log.info("number of proposals found in database = " + currentProposals.size());
-
-        } catch (Throwable ex) {
-            log.error("Failed to create sessionFactory object." + ex);
-            correct = false;
-        } finally {
-            if (transaction != null) {
-                transaction.commit();
-            }
-            if (session != null) {
-                session.close();
-            }
-        }
-
-        if (!correct) {
-            System.exit(1);
-        }
-
-        log.info("porposals read from database");
-
-        for (Object p : currentProposals) {
-            Proposal prop = (Proposal) p;
-            log.info("porposal read from database with prop_id = " + prop.getPropId());
-        }
+        System.exit(0);
     }
 
     private static boolean tablesExist() throws SQLException, PropertyVetoException, UnableToCreatePorposalsTables {
