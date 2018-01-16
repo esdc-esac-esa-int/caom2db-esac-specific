@@ -130,9 +130,9 @@ public class Main {
                 }
             }
 
-            //            if (!newRead.equals(oldRead)) {
-            proposalsChanged = true;
-            //            }
+            if (!newRead.equals(oldRead)) {
+                proposalsChanged = true;
+            }
 
             if (proposalsChanged) {
                 try (BufferedWriter bw = new BufferedWriter(new FileWriter("lastRead"))) {
@@ -228,13 +228,23 @@ public class Main {
 
             log.info("porposals read from database");
 
-            for (Object p : currentProposals) {
-                Proposal prop = (Proposal) p;
-                log.info("porposal read from database with prop_id = " + prop.getPropId());
+            for (Object pDB : currentProposals) {
+                Proposal prop = (Proposal) pDB;
+                log.debug("porposal read from database with prop_id = " + prop.getPropId());
+                boolean found = false;
+                for (Proposal pService : proposalList) {
+                    if (!pService.equals(pDB))
+                        continue;
+                    found = true;
+                    break;
+                }
+                if (!found) {
+
+                }
                 Iterator iter = prop.getPublications().iterator();
                 while (iter.hasNext()) {
                     Publication pub = (Publication) iter.next();
-                    log.info("porposal read from database with publication = " + pub.getTitle());
+                    log.debug("porposal " + prop.getPropId() + " read from database with publication title = " + pub.getTitle());
                 }
             }
         }

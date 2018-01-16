@@ -140,4 +140,14 @@ public class Proposal extends SimpleProposal implements java.io.Serializable {
         this.numObservations = numObservations;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof Proposal)) {
+            return false;
+        }
+        return this.getPropId().equals(((Proposal) obj).getPropId());
+    }
 }
