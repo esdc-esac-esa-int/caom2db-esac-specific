@@ -20,7 +20,7 @@ import javax.persistence.UniqueConstraint;
 @Entity
 @Table(name = "proposal", catalog = "hst", uniqueConstraints = {@UniqueConstraint(columnNames = "proposal_oid"),
         @UniqueConstraint(columnNames = "proposal_id")})
-public class Proposal implements java.io.Serializable {
+public class Proposal extends SimpleProposal implements java.io.Serializable {
 
     /**
      *
@@ -98,7 +98,7 @@ public class Proposal implements java.io.Serializable {
         this.pubAbstract = pubAbstract;
     }
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(name = "publication_proposal", catalog = "hst", joinColumns = {
             @JoinColumn(name = "proposal_oid", nullable = false, updatable = true)}, inverseJoinColumns = {
                     @JoinColumn(name = "publication_oid", nullable = false, updatable = true)})

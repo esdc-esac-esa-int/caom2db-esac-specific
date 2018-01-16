@@ -108,7 +108,7 @@ public class Publication {
         this.numberOfObservations = numberOfObservations;
     }
 
-    @Column(name = "no_publications", unique = false, nullable = false)
+    @Column(name = "no_proposals", unique = false, nullable = false)
     public Integer getNumberOfPublications() {
         return numberOfProposals;
     }
@@ -126,7 +126,7 @@ public class Publication {
         this.publicationOid = publicationOid;
     }
 
-    @ManyToMany(fetch = FetchType.LAZY, mappedBy = "publications")
+    @ManyToMany(fetch = FetchType.EAGER, mappedBy = "publications")
     public List<Proposal> getProposals() {
         return proposals;
     }

@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -38,6 +39,7 @@ import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.JdbcSingleton;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.UnableToCreatePorposalsTables;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
+import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
 
 /**
  *
@@ -128,9 +130,9 @@ public class Main {
                 }
             }
 
-            if (!newRead.equals(oldRead)) {
-                proposalsChanged = true;
-            }
+            //            if (!newRead.equals(oldRead)) {
+            proposalsChanged = true;
+            //            }
 
             if (proposalsChanged) {
                 try (BufferedWriter bw = new BufferedWriter(new FileWriter("lastRead"))) {
@@ -184,7 +186,7 @@ public class Main {
                 System.exit(1);
             }
 
-            log.info("proposals read from service instantiated");
+            log.info("proposals read from service");
 
             try {
                 correct = tablesExist();
@@ -229,6 +231,11 @@ public class Main {
             for (Object p : currentProposals) {
                 Proposal prop = (Proposal) p;
                 log.info("porposal read from database with prop_id = " + prop.getPropId());
+                Iterator iter = prop.getPublications().iterator();
+                while (iter.hasNext()) {
+                    Publication pub = (Publication) iter.next();
+                    log.info("porposal read from database with publication = " + pub.getTitle());
+                }
             }
         }
         System.exit(0);
