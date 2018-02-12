@@ -15,7 +15,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -39,7 +41,6 @@ import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.JdbcSingleton;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.UnableToCreatePorposalsTables;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
-import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
 
 /**
  *
@@ -51,7 +52,7 @@ public class Main {
     private static Configuration configuration = null;
     private static SessionFactory factory = null;
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Transactional(rollbackFor = Exception.class)
     public static void main(String[] args) {
         boolean correct = true;
@@ -111,11 +112,11 @@ public class Main {
 
         ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password);
 
-        boolean proposalsChanged = false;
+        boolean proposalsChanged = true;
         log.info("config initiated");
 
         List<Callable<Proposal>> tasks = new ArrayList<>();
-        List<Proposal> proposalList = new ArrayList<Proposal>();
+        List proposalList = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
             String oldRead = null;
@@ -228,28 +229,56 @@ public class Main {
 
             log.info("porposals read from database");
 
-            for (Object pDB : currentProposals) {
-                Proposal prop = (Proposal) pDB;
-                log.debug("porposal read from database with prop_id = " + prop.getPropId());
-                boolean found = false;
-                for (Proposal pService : proposalList) {
-                    if (!pService.equals(pDB))
-                        continue;
-                    found = true;
-                    break;
-                }
-                if (!found) {
+            Collections.sort(currentProposals, proposalComparator);
+            Collections.sort(proposalList, proposalComparator);
 
+            log.info("checking for proposals to be removed");
+            for (int i = 0; i < currentProposals.size(); i++) {
+                Proposal pDB = (Proposal) currentProposals.get(i);
+                log.debug("porposal read from database with prop_id = " + pDB.getPropId());
+                int foundInService = Arrays.binarySearch(proposalList.toArray(), pDB);
+                if (foundInService < 0) {
+                    log.info("proposal " + pDB.getPropId() + " to be removed");
+                    currentProposals.remove(i);
+                    i--;
                 }
-                Iterator iter = prop.getPublications().iterator();
-                while (iter.hasNext()) {
-                    Publication pub = (Publication) iter.next();
-                    log.debug("porposal " + prop.getPropId() + " read from database with publication title = " + pub.getTitle());
+            }
+
+            log.info("checking for proposals to be removed");
+            for (Object p : proposalList) {
+                Proposal pService = (Proposal) p;
+                int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+                if (foundInDB < 0) {
+                    log.info("proposal " + pService.getPropId() + " to be added");
+                    currentProposals.add(pService);
                 }
+            }
+
+            log.info("at this point both lists contain the same porposals but they can be composed differently");
+            for (int i = 0; i < currentProposals.size(); i++) {
+                Proposal currentProp = (Proposal) currentProposals.get(i);
+                Proposal readProp = (Proposal) proposalList.get(i);
+                currentProp.setCycle(readProp.getCycle());
+                currentProp.setId(readProp.getId());
+                currentProp.setNumObservations(readProp.getNumObservations());
+                currentProp.setNumPublications(readProp.getNumPublications());
+                currentProp.setPiName(readProp.getPiName());
+                currentProp.setPubAbstract(readProp.getPubAbstract());
+                currentProp.setSciCat(readProp.getSciCat());
+                currentProp.setTitle(readProp.getTitle());
+                currentProp.setType(readProp.getType());
+                currentProp.setPublications(readProp.getPublications());
             }
         }
         System.exit(0);
     }
+
+    private static Comparator<Proposal> proposalComparator = new Comparator<Proposal>() {
+        @Override
+        public int compare(Proposal p1, Proposal p2) {
+            return p1.getPropId().compareTo(p2.getPropId());
+        }
+    };
 
     private static boolean tablesExist() throws SQLException, PropertyVetoException, UnableToCreatePorposalsTables {
         boolean correct = true;
