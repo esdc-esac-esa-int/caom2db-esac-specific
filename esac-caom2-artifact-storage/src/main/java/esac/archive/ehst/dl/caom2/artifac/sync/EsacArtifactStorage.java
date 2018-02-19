@@ -231,7 +231,7 @@ public class EsacArtifactStorage implements ArtifactStore {
     @Override
     public void store(URI artifactURI, InputStream data, FileMetadata metadata)
             throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
-        log.info("Entering store method");
+        log.info("Entering store method: artifactURI = " + artifactURI.toString() + " metadata = " + metadata);
         if (artifactURI == null || metadata == null || metadata.getMd5Sum() == null) {
             throw new IllegalArgumentException("Neither ArtifactURI nor FileMetadata can be null");
         }

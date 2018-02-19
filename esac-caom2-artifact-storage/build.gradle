@@ -15,7 +15,7 @@ sourceCompatibility = 1.7
 
 group = 'esac.archive'
 
-version = '1.0.0'
+version = '1.0.1'
 
 mainClassName = 'esac.archive.ehst.dl.caom2.artifac.sync.Main'
 
@@ -30,7 +30,7 @@ dependencies {
     compile 'org.opencadc:caom2:[2.3.9,)'
     compile 'org.opencadc:caom2persistence:[2.3.14,)'
     compile 'org.opencadc:cadc-util:[1.0.14,)'
-    compile 'org.opencadc:caom2-artifact-sync:[2.3.8,)'
+    compile 'org.opencadc:caom2-artifact-sync:[2.3.9,)'
 
     runtime 'net.sourceforge.jtds:jtds:1.+'
     runtime 'org.postgresql:postgresql:9.4.1209.jre7'
