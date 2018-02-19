@@ -239,17 +239,21 @@ public class EsacArtifactStorage implements ArtifactStore {
         URI checksum = null;
         try {
             checksum = new URI(metadata.getMd5Sum());
+            log.debug("Checksum received form ArtifactURI = '" + artifactURI.toString() + "' is '" + checksum + "'");
         } catch (URISyntaxException e1) {
             throw new TransientException("Unable to create URI from '" + metadata.getMd5Sum() + "'");
         }
         if (!contains(artifactURI, checksum)) {
+            log.debug("ArtifactURI = '" + artifactURI.toString() + "' with checksum = '" + checksum + "' is not present locally");
             try {
                 if (saveFile(artifactURI, data)) {
+                    log.debug("ArtifactURI = '" + artifactURI.toString() + "' saved locally");
                     String md5 = calculateMD5Sum(parsePath(artifactURI.toString()));
                     URI md5Uri = new URI(md5);
+                    log.debug("md5uri for ArtifactURI = '" + artifactURI.toString() + "' is '" + md5Uri + "'");
                     log.debug("CHECKSUM: calculated md5 from " + artifactURI + " = " + md5);
                     log.debug("CHECKSUM: expected md5 from " + artifactURI + " = " + checksum);
-                    if (checksum == null || md5.equals(checksum.toString())) {
+                    if (checksum == null || md5.equals("md5:" + checksum.toString())) {
                         EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
                     } else {
                         throw new TransientException("Mismatch between received checksum (" + checksum + ") and the calculeted one (" + md5 + ").");
