@@ -5,8 +5,9 @@ import ca.nrc.cadc.net.TransientException;
 import ca.nrc.cadc.util.FileMetadata;
 
 import java.beans.PropertyVetoException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.security.AccessControlException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.log4j.Logger;
 
@@ -59,48 +61,17 @@ public class EsacArtifactStorage implements ArtifactStore {
         return result;
     }
 
-    public void store(URI artifactURI, URI checksum, Long arg2, InputStream input)
-            throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
-        log.info("Entering store method");
-        if (artifactURI == null) {
-            throw new IllegalArgumentException("ArtifactURI cannot be null");
-        }
-        init();
-        if (!contains(artifactURI, checksum)) {
-            try {
-                if (saveFile(artifactURI, input)) {
-                    String md5 = calculateMD5Sum(parsePath(artifactURI.toString()));
-                    URI md5Uri = new URI(md5);
-                    log.debug("CHECKSUM: calculated md5 from " + artifactURI + " = " + md5);
-                    log.debug("CHECKSUM: expected md5 from " + artifactURI + " = " + checksum);
-                    if (checksum == null || md5.equals(checksum.toString())) {
-                        EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
-                    } else {
-                        throw new TransientException("Mismatch between received checksum (" + checksum + ") and the calculeted one (" + md5 + ").");
-                    }
-                }
-            } catch (Exception e) {
-                throw new AccessControlException(e.getCause().getMessage());
-            }
-        }
-
-    }
-
     public static String getFilesLocation() {
         return filesLocation;
     }
 
     private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
-        log.debug("entering saveFile for ********************** " + artifactURI.toString());
-
         String path = parsePath(artifactURI.toString());
-
-        log.debug("saveFile ********************** path " + path);
 
         Path pathToFile = Paths.get(path);
         pathToFile = pathToFile.getParent();
 
-        log.debug("saveFile ********************** path '" + path + "'");
+        log.info("START saving file '" + path + "'");
 
         try {
             Files.createDirectories(pathToFile);
@@ -108,24 +79,24 @@ public class EsacArtifactStorage implements ArtifactStore {
             log.error(e1.getMessage());
             throw e1;
         }
-        log.debug("saveFile ********************** directory '" + pathToFile + "' created");
+        GZIPOutputStream gzipOS = null;
         FileOutputStream fos = null;
         File f = null;
         try {
             f = new File(path);
-
             fos = new FileOutputStream(f);
+            gzipOS = new GZIPOutputStream(fos);
 
             int read = 0;
-            byte[] bytes = new byte[1024];
+            byte[] bytes = new byte[2048];
+
+            log.info("writing file '" + path + "'");
 
             while ((read = input.read(bytes)) != -1) {
-                fos.write(bytes, 0, read);
+                gzipOS.write(bytes, 0, read);
             }
-
-            fos.flush();
-
-            log.debug("saveFile ********************** file '" + f.getName() + "' created");
+            gzipOS.flush();
+            log.info("file writen '" + path + "'");
 
         } catch (IOException ex) {
             log.error(ex.getMessage());
@@ -140,7 +111,18 @@ public class EsacArtifactStorage implements ArtifactStore {
                     log.error(e.getMessage());
                 }
             }
+            //            if (gzipOS != null) {
+            //                try {
+            //                    gzipOS.close();
+            //                    gzipOS = null;
+            //                    System.gc();
+            //                } catch (IOException e) {
+            //                    log.error(e.getMessage());
+            //                }
+            //            }
         }
+        log.info("FINISH saving file '" + path + "'");
+
         return true;
     }
 
@@ -187,18 +169,14 @@ public class EsacArtifactStorage implements ArtifactStore {
 
     }
 
-    private String calculateMD5Sum(String path) throws UnsupportedOperationException, NoSuchAlgorithmException, IOException {
+    private String calculateMD5Sum(InputStream data) throws UnsupportedOperationException, NoSuchAlgorithmException, IOException {
         MessageDigest md = MessageDigest.getInstance("MD5");
-
         StringBuffer hexString = new StringBuffer();
-        FileInputStream fis = null;
         try {
-            fis = new FileInputStream(path);
-
             byte[] dataBytes = new byte[1024];
 
             int nread = 0;
-            while ((nread = fis.read(dataBytes)) != -1) {
+            while ((nread = data.read(dataBytes)) != -1) {
                 md.update(dataBytes, 0, nread);
             }
 
@@ -219,19 +197,19 @@ public class EsacArtifactStorage implements ArtifactStore {
             }
             hexString.insert(0, "md5:");
         } catch (FileNotFoundException e) {
+            log.error(e.getMessage());
             throw e;
-        } finally {
-            if (fis != null) {
-                fis.close();
-            }
         }
         return hexString.toString();
+
     }
 
     @Override
     public void store(URI artifactURI, InputStream data, FileMetadata metadata)
             throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
         log.info("Entering store method: artifactURI = " + artifactURI.toString() + " metadata = " + metadata);
+        ByteArrayOutputStream baos = saveInputStream(data);
+
         if (artifactURI == null || metadata == null || metadata.getMd5Sum() == null) {
             throw new IllegalArgumentException("Neither ArtifactURI nor FileMetadata can be null");
         }
@@ -239,30 +217,53 @@ public class EsacArtifactStorage implements ArtifactStore {
         URI checksum = null;
         try {
             checksum = new URI(metadata.getMd5Sum());
-            log.debug("Checksum received form ArtifactURI = '" + artifactURI.toString() + "' is '" + checksum + "'");
+            log.info("Checksum received form ArtifactURI = '" + artifactURI.toString() + "' is '" + checksum + "'");
         } catch (URISyntaxException e1) {
             throw new TransientException("Unable to create URI from '" + metadata.getMd5Sum() + "'");
         }
         if (!contains(artifactURI, checksum)) {
-            log.debug("ArtifactURI = '" + artifactURI.toString() + "' with checksum = '" + checksum + "' is not present locally");
+            log.info("ArtifactURI = '" + artifactURI.toString() + "' with checksum = '" + checksum + "' is not present locally");
             try {
-                if (saveFile(artifactURI, data)) {
-                    log.debug("ArtifactURI = '" + artifactURI.toString() + "' saved locally");
-                    String md5 = calculateMD5Sum(parsePath(artifactURI.toString()));
+                if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
+                    log.info("ArtifactURI = '" + artifactURI.toString() + "' saved locally");
+                    String md5 = calculateMD5Sum(new ByteArrayInputStream(baos.toByteArray()));
                     URI md5Uri = new URI(md5);
-                    log.debug("md5uri for ArtifactURI = '" + artifactURI.toString() + "' is '" + md5Uri + "'");
-                    log.debug("CHECKSUM: calculated md5 from " + artifactURI + " = " + md5);
-                    log.debug("CHECKSUM: expected md5 from " + artifactURI + " = " + checksum);
-                    if (checksum == null || md5.equals("md5:" + checksum.toString())) {
+                    String check = "md5:" + checksum.toString();
+                    log.info("CHECKSUM: calculated md5 for " + artifactURI + " = " + md5);
+                    log.info("CHECKSUM: expected md5 for " + artifactURI + " = " + check);
+                    if (checksum == null || md5.equals(check)) {
                         EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
                     } else {
-                        throw new TransientException("Mismatch between received checksum (" + checksum + ") and the calculeted one (" + md5 + ").");
+                        throw new TransientException("Mismatch between received checksum (" + check + ") and the calculeted one (" + md5 + ").");
                     }
                 }
             } catch (Exception e) {
+                log.error(e.getMessage());
                 throw new AccessControlException(e.getCause().getMessage());
             }
         }
 
+    }
+
+    private ByteArrayOutputStream saveInputStream(InputStream data) {
+        ByteArrayOutputStream baos = null;
+        try {
+            baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = data.read(buffer)) > -1) {
+                baos.write(buffer, 0, len);
+            }
+            baos.flush();
+        } catch (Exception ex) {
+            if (baos != null) {
+                try {
+                    baos.close();
+                } catch (IOException e) {
+                }
+                baos = null;
+            }
+        }
+        return baos;
     }
 }
