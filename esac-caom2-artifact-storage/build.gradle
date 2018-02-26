@@ -15,7 +15,7 @@ sourceCompatibility = 1.7
 
 group = 'esac.archive'
 
-version = '1.0.1'
+version = '1.0.2'
 
 mainClassName = 'esac.archive.ehst.dl.caom2.artifac.sync.Main'
 

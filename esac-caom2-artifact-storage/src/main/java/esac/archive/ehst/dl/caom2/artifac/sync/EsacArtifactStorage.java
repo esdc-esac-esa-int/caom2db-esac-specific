@@ -39,12 +39,34 @@ import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
 public class EsacArtifactStorage implements ArtifactStore {
 
     private static final Logger log = Logger.getLogger(EsacArtifactStorage.class.getName());
-    private static String filesLocation = null;
-    protected static final String FILES_LOCATION = "caom2.artifactsync.repository.root";
+
+    protected static String J_FILES_LOCATION = null;
+    protected static String L_FILES_LOCATION = null;
+    protected static String X_FILES_LOCATION = null;
+    protected static String Y_FILES_LOCATION = null;
+    protected static String Z_FILES_LOCATION = null;
+    protected static String N_FILES_LOCATION = null;
+    protected static String O_FILES_LOCATION = null;
+    protected static String I_FILES_LOCATION = null;
+    protected static String W_FILES_LOCATION = null;
+    protected static String U_FILES_LOCATION = null;
+    protected static String V_FILES_LOCATION = null;
+    protected static String F_FILES_LOCATION = null;
 
     public EsacArtifactStorage() throws IllegalArgumentException, SecurityException, IllegalAccessException, InvocationTargetException, NoSuchMethodException,
             SQLException, PropertyVetoException {
-        filesLocation = ConfigProperties.getInstance().getProperty(FILES_LOCATION);
+        J_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.j");
+        L_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.l");
+        X_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.x");
+        Y_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.y");
+        Z_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.z");
+        N_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.n");
+        O_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.o");
+        I_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.i");
+        W_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.w");
+        U_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.u");
+        V_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.v");
+        F_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.f");
     }
 
     @Override
@@ -61,12 +83,53 @@ public class EsacArtifactStorage implements ArtifactStore {
         return result;
     }
 
-    public static String getFilesLocation() {
-        return filesLocation;
+    public static String getJ() {
+        return J_FILES_LOCATION;
+    }
+    public static String getL() {
+        return L_FILES_LOCATION;
+    }
+    public static String getX() {
+        return X_FILES_LOCATION;
+    }
+    public static String getY() {
+        return Y_FILES_LOCATION;
+    }
+    public static String getZ() {
+        return Z_FILES_LOCATION;
+    }
+    public static String getN() {
+        return N_FILES_LOCATION;
+    }
+    public static String getO() {
+        return O_FILES_LOCATION;
+    }
+    public static String getI() {
+        return I_FILES_LOCATION;
+    }
+    public static String getW() {
+        return W_FILES_LOCATION;
+    }
+    public static String getU() {
+        return U_FILES_LOCATION;
+    }
+    public static String getV() {
+        return V_FILES_LOCATION;
+    }
+    public static String getF() {
+        return F_FILES_LOCATION;
     }
 
     private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
-        String path = parsePath(artifactURI.toString());
+        String path = null;
+        try {
+            path = parsePath(artifactURI.toString());
+        } catch (NotValidInstrumentException e2) {
+            e2.printStackTrace();
+            return false;
+        }
+
+        boolean toBeCompressed = path.endsWith(".gz");
 
         Path pathToFile = Paths.get(path);
         pathToFile = pathToFile.getParent();
@@ -93,9 +156,17 @@ public class EsacArtifactStorage implements ArtifactStore {
             log.info("writing file '" + path + "'");
 
             while ((read = input.read(bytes)) != -1) {
-                gzipOS.write(bytes, 0, read);
+                if (toBeCompressed) {
+                    gzipOS.write(bytes, 0, read);
+                } else {
+                    fos.write(bytes, 0, read);
+                }
             }
-            gzipOS.flush();
+            if (toBeCompressed) {
+                gzipOS.flush();
+            } else {
+                fos.flush();
+            }
             log.info("file writen '" + path + "'");
 
         } catch (IOException ex) {
@@ -111,44 +182,13 @@ public class EsacArtifactStorage implements ArtifactStore {
                     log.error(e.getMessage());
                 }
             }
-            //            if (gzipOS != null) {
-            //                try {
-            //                    gzipOS.close();
-            //                    gzipOS = null;
-            //                    System.gc();
-            //                } catch (IOException e) {
-            //                    log.error(e.getMessage());
-            //                }
-            //            }
         }
         log.info("FINISH saving file '" + path + "'");
 
         return true;
     }
 
-    // private String parsePath(String artifact) {
-    // // example of artifact -> mast:HST/product/o6h086a6q/o6h086a6j_jit.fits
-    // String mast = artifact.split("[:]")[0];
-    // String rest = artifact.substring(mast.length() + 1);
-    // String[] parts = rest.split("[/]");
-    // String hst = parts[0];
-    // String product = parts[1];
-    // String name = parts[2];
-    // char first = name.charAt(0);
-    // String second = name.substring(1, 4);
-    // String third = name.substring(4, 6);
-    // String fileName = parts[3];
-    //
-    // String root = getFilesLocation().endsWith("/")
-    // ? getFilesLocation().substring(0, getFilesLocation().length() - 1) :
-    // getFilesLocation();
-    // String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first
-    // + "/" + second + "/" + third + "/"
-    // + fileName;
-    // return path;
-    // }
-
-    private String parsePath(String artifact) {
+    private String parsePath(String artifact) throws NotValidInstrumentException {
         // modification -> mast:HST/product/x0bi0302t_dgr.fits
         String mast = artifact.split("[:]")[0];
         String rest = artifact.substring(mast.length() + 1);
@@ -156,12 +196,45 @@ public class EsacArtifactStorage implements ArtifactStore {
         String hst = parts[0];
         String product = parts[1];
         String name = parts[2];
+        boolean toBeCompressed = !name.endsWith(".fits");
         char first = name.charAt(0);
         String second = name.substring(1, 4);
         String third = name.substring(4, 6);
 
-        String root = getFilesLocation().endsWith("/") ? getFilesLocation().substring(0, getFilesLocation().length() - 1) : getFilesLocation();
+        String root = null;
+        String filesLocation = null;
+        if (first == 'j') {
+            filesLocation = getJ();
+        } else if (first == 'l') {
+            filesLocation = getL();
+        } else if (first == 'x') {
+            filesLocation = getX();
+        } else if (first == 'y') {
+            filesLocation = getY();
+        } else if (first == 'z') {
+            filesLocation = getZ();
+        } else if (first == 'n') {
+            filesLocation = getN();
+        } else if (first == 'o') {
+            filesLocation = getO();
+        } else if (first == 'i') {
+            filesLocation = getI();
+        } else if (first == 'w') {
+            filesLocation = getW();
+        } else if (first == 'u') {
+            filesLocation = getU();
+        } else if (first == 'v') {
+            filesLocation = getV();
+        } else if (first == 'f') {
+            filesLocation = getF();
+        } else {
+            throw new NotValidInstrumentException("'" + first + "'" + " is not a valid instrument");
+        }
+        root = filesLocation.endsWith("/") ? filesLocation.substring(0, filesLocation.length() - 1) : filesLocation;
         String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first + "/" + second + "/" + third + "/" + name;
+        if (toBeCompressed) {
+            path += ".gz";
+        }
         return path;
     }
 

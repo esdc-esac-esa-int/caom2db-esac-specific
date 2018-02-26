@@ -21,14 +21,11 @@ public class EsacChecksumPersistance {
 
     private static Logger log = Logger.getLogger(EsacChecksumPersistance.class.getName());
 
-    protected static final String SCRIPT = "caom2.artifactsync.checksumTable.creationScript";
-    protected static final String SCHEMA = "caom2.artifactsync.checksumTable.schema";
     protected static final String TABLENAME = "caom2.artifactsync.checksumTable.table";
     protected static final String COLUMN_ARTIFACT = "caom2.artifactsync.checksumTable.columnArtifact";
     protected static final String COLUMN_CHECKSUM = "caom2.artifactsync.checksumTable.columnChecksum";
-    protected final static String PK = "caom2.artifactsync.checksumTable.pk";
+    protected static final String PK = "caom2.artifactsync.checksumTable.pk";
 
-    private static String checksumCreateScript = null;
     private static String checksumSchema = null;
     private static String checksumTable = null;
     private static String checksumArtifactColumnName = null;
@@ -46,9 +43,7 @@ public class EsacChecksumPersistance {
 
     private EsacChecksumPersistance() {
         try {
-
-            setChecksumCreateScript(ConfigProperties.getInstance().getProperty(SCRIPT));
-            setChecksumSchema(ConfigProperties.getInstance().getProperty(SCHEMA));
+            setChecksumSchema(JdbcSingleton.getInstance().getDbschema());
             setChecksumTable(ConfigProperties.getInstance().getProperty(TABLENAME));
             setChecksumArtifactColumnName(ConfigProperties.getInstance().getProperty(COLUMN_ARTIFACT));
             setChecksumChecksumColumnName(ConfigProperties.getInstance().getProperty(COLUMN_CHECKSUM));
@@ -301,14 +296,6 @@ public class EsacChecksumPersistance {
 
     private void setChecksumChecksumColumnName(String checksumChecksumColumnName) {
         EsacChecksumPersistance.checksumChecksumColumnName = checksumChecksumColumnName;
-    }
-
-    public String getChecksumCreateScript() {
-        return checksumCreateScript;
-    }
-
-    private static void setChecksumCreateScript(String checksumCreateScript) {
-        EsacChecksumPersistance.checksumCreateScript = checksumCreateScript;
     }
 
     public String getChecksumPk() {
