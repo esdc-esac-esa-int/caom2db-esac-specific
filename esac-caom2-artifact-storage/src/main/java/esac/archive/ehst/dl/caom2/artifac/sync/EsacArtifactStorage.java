@@ -142,45 +142,45 @@ public class EsacArtifactStorage implements ArtifactStore {
             log.error(e1.getMessage());
             throw e1;
         }
-        GZIPOutputStream gzipOS = null;
-        FileOutputStream fos = null;
-        File f = null;
-        try {
-            f = new File(path);
-            fos = new FileOutputStream(f);
-            gzipOS = new GZIPOutputStream(fos);
+        File f = new File(path);
+        if (!f.exists()) {
+            f.createNewFile();
+        }
+        if (toBeCompressed) {
+            try (FileOutputStream fos = new FileOutputStream(f); GZIPOutputStream gzipOS = new GZIPOutputStream(fos)) {
+                int read = 0;
+                byte[] bytes = new byte[2048];
 
-            int read = 0;
-            byte[] bytes = new byte[2048];
+                log.info("writing file '" + path + "'");
 
-            log.info("writing file '" + path + "'");
-
-            while ((read = input.read(bytes)) != -1) {
-                if (toBeCompressed) {
+                while ((read = input.read(bytes)) != -1) {
                     gzipOS.write(bytes, 0, read);
-                } else {
+                }
+                gzipOS.flush();
+
+                log.info("file writen '" + path + "'");
+
+            } catch (IOException ex) {
+                log.error(ex.getMessage());
+                throw ex;
+            }
+
+        } else {
+            try (FileOutputStream fos = new FileOutputStream(f)) {
+                int read = 0;
+                byte[] bytes = new byte[2048];
+
+                log.info("writing file '" + path + "'");
+
+                while ((read = input.read(bytes)) != -1) {
                     fos.write(bytes, 0, read);
                 }
-            }
-            if (toBeCompressed) {
-                gzipOS.flush();
-            } else {
                 fos.flush();
-            }
-            log.info("file writen '" + path + "'");
+                log.info("file writen '" + path + "'");
 
-        } catch (IOException ex) {
-            log.error(ex.getMessage());
-            throw ex;
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close();
-                    fos = null;
-                    System.gc();
-                } catch (IOException e) {
-                    log.error(e.getMessage());
-                }
+            } catch (IOException ex) {
+                log.error(ex.getMessage());
+                throw ex;
             }
         }
         log.info("FINISH saving file '" + path + "'");
