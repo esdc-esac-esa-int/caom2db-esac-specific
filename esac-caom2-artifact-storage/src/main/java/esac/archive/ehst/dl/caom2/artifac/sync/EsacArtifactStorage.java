@@ -196,7 +196,7 @@ public class EsacArtifactStorage implements ArtifactStore {
         String hst = parts[0];
         String product = parts[1];
         String name = parts[2];
-        boolean toBeCompressed = !name.endsWith(".fits");
+        boolean toBeCompressed = name.endsWith(".fits");
         char first = name.charAt(0);
         String second = name.substring(1, 4);
         String third = name.substring(4, 6);
