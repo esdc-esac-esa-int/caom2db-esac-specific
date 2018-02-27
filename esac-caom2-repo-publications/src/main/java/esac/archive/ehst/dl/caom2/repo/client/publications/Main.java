@@ -116,7 +116,7 @@ public class Main {
         log.info("config initiated");
 
         List<Callable<Proposal>> tasks = new ArrayList<>();
-        List proposalList = new ArrayList<Proposal>();
+        List newProposals = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
             String oldRead = null;
@@ -173,7 +173,7 @@ public class Main {
                 futures = taskExecutor.invokeAll(tasks);
 
                 for (Future<Proposal> f : futures) {
-                    proposalList.add(f.get());
+                    newProposals.add(f.get());
                 }
             } catch (InterruptedException | ExecutionException e) {
                 log.error("Error when executing thread in ThreadPool: " + e.getMessage() + " caused by: " + e.getCause().toString());
@@ -210,6 +210,29 @@ public class Main {
                 transaction = session.beginTransaction();
                 currentProposals = session.createQuery("from Proposal").list();
                 log.info("number of proposals found in database = " + currentProposals.size());
+                log.info("porposals read from database");
+                Collections.sort(currentProposals, proposalComparator);
+                Collections.sort(newProposals, proposalComparator);
+
+                List<Proposal> resultListToBeRemoved = processToBeRemoved(newProposals, currentProposals);
+                List<Proposal> resultListToBeUpdated = processToBeUpdated(newProposals, currentProposals);
+                List<Proposal> resultListToBeAdded = processToBeAdded(newProposals, currentProposals);
+
+                log.info("removing proposals");
+                for (Proposal p : resultListToBeRemoved) {
+                    session.remove(p);
+                }
+                log.info("updating proposals");
+                for (Proposal p : resultListToBeUpdated) {
+                    session.update(p);
+                }
+                log.info("adding proposals");
+                for (Proposal p : resultListToBeAdded) {
+                    log.info("-> added proposal '" + p.getId() + "' '" + p.getPropId() + "' '" + p.getNumObservations() + "' '" + p.getNumPublications() + "' '"
+                            + p.getPiName() + "' '" + p.getPubAbstract() + "' '" + p.getSciCat() + "' '" + p.getTitle() + "' '" + p.getType() + "' '"
+                            + p.getPublications());
+                    session.save(p);
+                }
 
             } catch (Throwable ex) {
                 log.error("Failed to create sessionFactory object." + ex);
@@ -227,50 +250,64 @@ public class Main {
                 System.exit(1);
             }
 
-            log.info("porposals read from database");
-
-            Collections.sort(currentProposals, proposalComparator);
-            Collections.sort(proposalList, proposalComparator);
-
-            log.info("checking for proposals to be removed");
-            for (int i = 0; i < currentProposals.size(); i++) {
-                Proposal pDB = (Proposal) currentProposals.get(i);
-                log.debug("porposal read from database with prop_id = " + pDB.getPropId());
-                int foundInService = Arrays.binarySearch(proposalList.toArray(), pDB);
-                if (foundInService < 0) {
-                    log.info("proposal " + pDB.getPropId() + " to be removed");
-                    currentProposals.remove(i);
-                    i--;
-                }
-            }
-
-            log.info("checking for proposals to be removed");
-            for (Object p : proposalList) {
-                Proposal pService = (Proposal) p;
-                int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
-                if (foundInDB < 0) {
-                    log.info("proposal " + pService.getPropId() + " to be added");
-                    currentProposals.add(pService);
-                }
-            }
-
-            log.info("at this point both lists contain the same porposals but they can be composed differently");
-            for (int i = 0; i < currentProposals.size(); i++) {
-                Proposal currentProp = (Proposal) currentProposals.get(i);
-                Proposal readProp = (Proposal) proposalList.get(i);
-                currentProp.setCycle(readProp.getCycle());
-                currentProp.setId(readProp.getId());
-                currentProp.setNumObservations(readProp.getNumObservations());
-                currentProp.setNumPublications(readProp.getNumPublications());
-                currentProp.setPiName(readProp.getPiName());
-                currentProp.setPubAbstract(readProp.getPubAbstract());
-                currentProp.setSciCat(readProp.getSciCat());
-                currentProp.setTitle(readProp.getTitle());
-                currentProp.setType(readProp.getType());
-                currentProp.setPublications(readProp.getPublications());
-            }
         }
         System.exit(0);
+    }
+
+    private static List<Proposal> processToBeUpdated(List<Proposal> newProposals, List<Proposal> currentProposals) {
+        log.info("at this point both lists contain the same porposals but they can be composed differently");
+        List<Proposal> proposalsToBeUpdated = new ArrayList<Proposal>();
+        proposalsToBeUpdated.addAll(currentProposals);
+        for (int i = 0; i < proposalsToBeUpdated.size(); i++) {
+            Proposal currentProp = proposalsToBeUpdated.get(i);
+            Proposal readProp = newProposals.get(i);
+            currentProp.setCycle(readProp.getCycle());
+            currentProp.setPropId(readProp.getPropId());
+            currentProp.setNumObservations(readProp.getNumObservations());
+            currentProp.setNumPublications(readProp.getNumPublications());
+            currentProp.setPiName(readProp.getPiName());
+            currentProp.setPubAbstract(readProp.getPubAbstract());
+            currentProp.setSciCat(readProp.getSciCat());
+            currentProp.setTitle(readProp.getTitle());
+            currentProp.setType(readProp.getType());
+            currentProp.setPublications(readProp.getPublications());
+            log.info("-> updated proposal '" + currentProp.getId() + "' '" + currentProp.getPropId() + "' '" + currentProp.getNumObservations() + "' '"
+                    + currentProp.getNumPublications() + "' '" + currentProp.getPiName() + "' '" + currentProp.getPubAbstract() + "' '"
+                    + currentProp.getSciCat() + "' '" + currentProp.getTitle() + "' '" + currentProp.getType() + "' '" + currentProp.getPublications() + "' '");
+        }
+        return proposalsToBeUpdated;
+    }
+
+    private static List<Proposal> processToBeAdded(List<Proposal> newProposals, List<Proposal> currentProposals) {
+        log.info("checking for proposals to be added");
+        List<Proposal> proposalsToBeAdded = new ArrayList<Proposal>();
+        for (Object p : newProposals) {
+            Proposal pService = (Proposal) p;
+            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+            if (foundInDB < 0) {
+                //                log.info("proposal " + pService.getPropId() + " to be added");
+                proposalsToBeAdded.add(pService);
+                currentProposals.add(pService);
+            }
+        }
+        return proposalsToBeAdded;
+    }
+
+    private static List<Proposal> processToBeRemoved(List<Proposal> newProposals, List<Proposal> currentProposals) {
+        log.info("checking for proposals to be removed");
+        List<Proposal> proposalsToBeRemoved = new ArrayList<Proposal>();
+        for (int i = 0; i < currentProposals.size(); i++) {
+            Proposal pDB = currentProposals.get(i);
+            log.debug("porposal read from database with prop_id = " + pDB.getPropId());
+            int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
+            if (foundInService < 0) {
+                log.info("proposal " + pDB.getPropId() + " to be removed");
+                proposalsToBeRemoved.add(pDB);
+                currentProposals.remove(pDB);
+                i--;
+            }
+        }
+        return proposalsToBeRemoved;
     }
 
     private static Comparator<Proposal> proposalComparator = new Comparator<Proposal>() {

@@ -6,7 +6,7 @@
 <hibernate-configuration>
 <session-factory>
     <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
-    <property name="hibernate.connection.url">jdbc:postgresql://hstdev02.n1data.lan:8300/ehst_dev</property>
+    <property name="hibernate.connection.url">jdbc:postgresql://hstdev02.n1data.lan:8300/ehst_dev_3</property>
     <property name="hibernate.connection.username">postgres</property>
     <property name="hibernate.connection.password">eh2t_r00t</property>
     <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQL94Dialect</property>

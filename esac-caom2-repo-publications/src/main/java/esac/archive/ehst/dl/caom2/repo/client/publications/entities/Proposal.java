@@ -20,7 +20,7 @@ import javax.persistence.UniqueConstraint;
 @Entity
 @Table(name = "proposal", catalog = "hst", uniqueConstraints = {@UniqueConstraint(columnNames = "proposal_oid"),
         @UniqueConstraint(columnNames = "proposal_id")})
-public class Proposal extends SimpleProposal implements java.io.Serializable {
+public class Proposal extends SimpleProposal implements java.io.Serializable, Comparable<Proposal> {
 
     /**
      *
@@ -149,5 +149,15 @@ public class Proposal extends SimpleProposal implements java.io.Serializable {
             return false;
         }
         return this.getPropId().equals(((Proposal) obj).getPropId());
+    }
+
+    @Override
+    public int compareTo(Proposal o) {
+        if (o == null) {
+            return -1;
+        } else if (o.getPropId() == null || this.getPropId() == null) {
+            return -1;
+        }
+        return this.getPropId().compareTo(o.getPropId());
     }
 }

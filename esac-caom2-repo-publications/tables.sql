@@ -1,6 +1,6 @@
--- Table: caom2.proposal
+﻿-- Table: caom2.proposal
 
-DROP TABLE caom2.proposal;
+-- DROP TABLE caom2.proposal;
 
 CREATE TABLE caom2.proposal
 (
@@ -27,7 +27,7 @@ GRANT SELECT, INSERT ON TABLE caom2.proposal TO public;
 
 -- Index: caom2.i_proposal_id
 
-DROP INDEX caom2.i_proposal_id;
+-- DROP INDEX caom2.i_proposal_id;
 
 CREATE INDEX i_proposal_id
   ON caom2.proposal
@@ -36,7 +36,7 @@ CREATE INDEX i_proposal_id
 
 -- Index: caom2.i_proposal_pi_name
 
-DROP INDEX caom2.i_proposal_pi_name;
+-- DROP INDEX caom2.i_proposal_pi_name;
 
 CREATE INDEX i_proposal_pi_name
   ON caom2.proposal
@@ -45,7 +45,7 @@ CREATE INDEX i_proposal_pi_name
 
 -- Index: caom2.i_proposal_title
 
-DROP INDEX caom2.i_proposal_title;
+-- DROP INDEX caom2.i_proposal_title;
 
 CREATE INDEX i_proposal_title
   ON caom2.proposal
@@ -54,7 +54,7 @@ CREATE INDEX i_proposal_title
 
 -- Table: caom2.publication
 
-DROP TABLE caom2.publication;
+-- DROP TABLE caom2.publication;
 
 CREATE TABLE caom2.publication
 (
@@ -83,7 +83,7 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE caom2.publication TO ehst_dao;
 
 -- Index: caom2.i_publication_abstract
 
-DROP INDEX caom2.i_publication_abstract;
+-- DROP INDEX caom2.i_publication_abstract;
 
 CREATE INDEX i_publication_abstract
   ON caom2.publication
@@ -92,7 +92,7 @@ CREATE INDEX i_publication_abstract
 
 -- Index: caom2.i_publication_authors
 
-DROP INDEX caom2.i_publication_authors;
+-- DROP INDEX caom2.i_publication_authors;
 
 CREATE INDEX i_publication_authors
   ON caom2.publication
@@ -101,7 +101,7 @@ CREATE INDEX i_publication_authors
 
 -- Index: caom2.i_publication_bib_code
 
-DROP INDEX caom2.i_publication_bib_code;
+-- DROP INDEX caom2.i_publication_bib_code;
 
 CREATE INDEX i_publication_bib_code
   ON caom2.publication
@@ -110,7 +110,7 @@ CREATE INDEX i_publication_bib_code
 
 -- Index: caom2.i_publication_title
 
-DROP INDEX caom2.i_publication_title;
+-- DROP INDEX caom2.i_publication_title;
 
 CREATE INDEX i_publication_title
   ON caom2.publication
@@ -119,7 +119,7 @@ CREATE INDEX i_publication_title
 
 -- Table: caom2.publication_proposal
 
-DROP TABLE caom2.publication_proposal;
+-- DROP TABLE caom2.publication_proposal;
 
 CREATE TABLE caom2.publication_proposal
 (
@@ -146,7 +146,7 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE caom2.publication_proposal TO ehst
 
 -- Index: caom2.i_pub_prop_proposal
 
-DROP INDEX caom2.i_pub_prop_proposal;
+-- DROP INDEX caom2.i_pub_prop_proposal;
 
 CREATE INDEX i_pub_prop_proposal
   ON caom2.publication_proposal
@@ -155,7 +155,7 @@ CREATE INDEX i_pub_prop_proposal
 
 -- Index: caom2.i_pub_prop_publication
 
-DROP INDEX caom2.i_pub_prop_publication;
+-- DROP INDEX caom2.i_pub_prop_publication;
 
 CREATE INDEX i_pub_prop_publication
   ON caom2.publication_proposal
