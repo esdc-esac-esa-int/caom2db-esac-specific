@@ -92,6 +92,7 @@ public class Main {
         String database = configuration.getProperty("hibernate.connection.database");
         String schema = configuration.getProperty("hibernate.default_schema");
         String host = configuration.getProperty("hibernate.connection.host");
+
         Integer port = null;
         try {
             port = Integer.parseInt(configuration.getProperty("hibernate.connection.port"));
