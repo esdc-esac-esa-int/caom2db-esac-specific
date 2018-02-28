@@ -57,9 +57,6 @@ public class Main {
     public static void main(String[] args) {
         boolean correct = true;
 
-        configuration = new Configuration().configure("/esac/archive/ehst/dl/caom2/repo/client/publications/hibernate.cfg.xml");
-        factory = configuration.buildSessionFactory();
-
         ArgumentMap am = new ArgumentMap(args);
         if (am.isSet("d") || am.isSet("debug")) {
             Log4jInit.setLevel("esac.archive.ehst.dl.caom2.repo.client.publications", Level.DEBUG);
@@ -72,11 +69,12 @@ public class Main {
             usage();
             System.exit(0);
         }
-        if (!am.isSet("url") || !am.isSet("connection") || !am.isSet("database") || !am.isSet("driver") || !am.isSet("schema") || !am.isSet("host")
-                || !am.isSet("port") || !am.isSet("username") || !am.isSet("password") || !am.isSet("nthreads")) {
+        if (!am.isSet("hibernate") || !am.isSet("nthreads")) {
             usage();
             correct = false;
         }
+        String hibConfigFile = am.getValue("hibernate");
+        configuration = new Configuration().configure(hibConfigFile);
 
         Integer nthreads = null;
         try {
@@ -89,12 +87,14 @@ public class Main {
             System.exit(1);
         }
 
-        String url = am.getValue("url");
-        String connection = am.getValue("connection");
-        String driver = am.getValue("driver");
-        String database = am.getValue("database");
-        String schema = am.getValue("schema");
-        String host = am.getValue("host");
+        //    <property name="hibernate.connection.url">jdbc:postgresql://hstdev02.n1data.lan:8300/ehst_dev_3</property>
+        // --connection=connection to the database (e.g. jdbc:postgresql://hstdev02.n1data.lan");
+        String resource = configuration.getProperty("resource");
+        String driver = configuration.getProperty("hibernate.connection.driver");
+        String database = configuration.getProperty("hibernate.connection.database");
+        String schema = configuration.getProperty("hibernate.default_schema");
+        String host = configuration.getProperty("hibernate.connection.host");
+
         Integer port = null;
         try {
             port = Integer.parseInt(am.getValue("port"));
@@ -107,10 +107,16 @@ public class Main {
             System.exit(1);
         }
 
-        String username = am.getValue("username");
-        String password = am.getValue("password");
+        String username = configuration.getProperty("username");
+        String password = configuration.getProperty("password");
+
+        configuration.setProperty("hibernate.connection.url", "jdbc:postgresql://" + host);
+        String connection = configuration.getProperty("hibernate.connection.url");
+        configuration.setProperty("hibernate.connection.url", "jdbc:postgresql://" + host + ":" + port + "/" + database);
 
         ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password);
+
+        factory = configuration.buildSessionFactory();
 
         boolean proposalsChanged = true;
         log.info("config initiated");
@@ -120,7 +126,7 @@ public class Main {
         JSONArray proposals = null;
         try {
             String oldRead = null;
-            String newRead = ProposalsReader.getInstance().read(url);
+            String newRead = ProposalsReader.getInstance().read(resource);
 
             File file = new File("lastRead");
             if (file.exists() && !file.isDirectory()) {
@@ -386,136 +392,11 @@ public class Main {
         return correct;
     }
 
-    public boolean clean(List<Proposal> proposalsList) {
-        boolean result = false;
-        String selectProposals = null;
-        String selectPublications = null;
-
-        selectProposals = "select prop_id from " + ConfigProperties.getInstance().getSchema() + ".proposal";
-        log.debug("selectProposals = " + selectProposals);
-
-        Connection con = null;
-        Statement stmt = null;
-        ResultSet rs = null;
-
-        try {
-            con = JdbcSingleton.getInstance().getConnection();
-            stmt = con.createStatement();
-            rs = stmt.executeQuery(selectProposals);
-            List<String> propIdList = new ArrayList<String>();
-            List<String> propToBeRemoved = new ArrayList<String>();
-            while (rs.next()) {
-                propIdList.add(rs.getString(1));
-            }
-
-            for (String p : propIdList) {
-                boolean found = false;
-                for (Proposal prop : proposalsList) {
-                    if (!p.equals(prop.getPropId())) {
-                        continue;
-                    }
-                    found = true;
-                    break;
-                }
-                if (!found) {
-                    propToBeRemoved.add(p);
-                }
-            }
-
-            removeOldProposals(propToBeRemoved, con, stmt);
-
-        } catch (Exception ex) {
-            throw new RuntimeException("Unexpected exception removing not valid proposals: " + ex.getMessage());
-        } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
-            }
-        }
-        return result;
-    }
-
-    private void removeOldProposals(List<String> propToBeRemoved, Connection con, Statement stmt) {
-        // TODO Auto-generated method stub
-
-    }
-
-    //    public boolean upsert(Proposal proposal) {
-    //        // INSERT INTO tablename (a, b, c) values (1, 2, 10) ON CONFLICT (a) DO
-    //        // UPDATE SET c = tablename.c + 1;
-    //        boolean result = false;
-    //        String insertProposal = null;
-    //        String insertPublicaciones = null;
-    //
-    //        //      insertProposal = "insert into " + ConfigProperties.getInstance().getSchema()
-    //        //      + ".proposal (prop_id, fname, mi, lname, title, type_, cycle, sci_cat, abstract) values ('" + proposal.getPropId() + "', '"
-    //        //      + proposal.getFname() + "', '" + proposal.getMi() + "', '" + proposal.getLname() + "', '" + proposal.getTitle() + "', '" + proposal.getType()
-    //        //      + "', '" + proposal.getSciCat() + "', '" + proposal.getPubAbstract() + "') where not exists (select 1 from "
-    //        //      + ConfigProperties.getInstance().getSchema() + ".proposal where prop_id = '" + proposal.getPropId() + "'";
-    //        insertProposal = "insert into " + ConfigProperties.getInstance().getSchema()
-    //                + ".proposal (prop_id, fname, mi, lname, title, type_, cycle, sci_cat, abstract) values ('" + proposal.getPropId() + "', '"
-    //                + proposal.getFname() + "', '" + proposal.getMi() + "', '" + proposal.getLname() + "', '" + proposal.getTitle() + "', '" + proposal.getType()
-    //                + "', '" + proposal.getSciCat() + "', '" + proposal.getPubAbstract() + "') on conflict (prop_id) do update set (fname = '" + proposal.getLname()
-    //                + "', mi = '" + proposal.getMi() + "', lname = '" + proposal.getLname() + "', title = '" + proposal.getTitle() + "', type_ = '"
-    //                + proposal.getType() + "', cycle = '" + proposal.getCycle() + "', sci_cat = " + proposal.getSciCat() + "', abstract = "
-    //                + proposal.getPubAbstract() + "'";
-    //        log.debug("insertProposal = " + insertProposal);
-    //
-    //        Connection con = null;
-    //        Statement stmt = null;
-    //        try {
-    //            con = JdbcSingleton.getInstance().getConnection();
-    //            stmt = con.createStatement();
-    //            int res = stmt.executeUpdate(insertProposal);
-    //            if (res != 1) {
-    //                throw new RuntimeException("Unexpected exception inserting proposal: " + proposal.getPropId().toString());
-    //            }
-    //        } catch (Exception ex) {
-    //            throw new RuntimeException("Unexpected exception inserting proposal: " + proposal.getPropId().toString());
-    //        } finally {
-    //            if (stmt != null) {
-    //                try {
-    //                    stmt.close();
-    //                } catch (SQLException e) {
-    //                }
-    //            }
-    //            if (con != null) {
-    //                try {
-    //                    con.close();
-    //                } catch (SQLException e) {
-    //                }
-    //            }
-    //        }
-    //        return result;
-    //    }
-
     private static void usage() {
         StringBuilder sb = new StringBuilder();
         sb.append("\n\nusage: esac-caom2-repo-publications [-v|--verbose|-d|--debug] [-h|--help] ...");
-        sb.append("\n         --url=url to retrieve data from (e.g. https://mastpartners.stsci.edu/partners/papers)");
-        sb.append("\n         --connection=connection to the database (e.g. jdbc:postgresql://hstdev02.n1data.lan");
-        sb.append("\n         --driver=driver of the database (e.g. org.postgresql.Driver");
-        sb.append("\n         --database=name of the database (e.g. ehst_dev");
-        sb.append("\n         --schema=schema in database to be used (e.g. caom2");
-        sb.append("\n         --host=host where the database is located (e.g. localhost)");
-        sb.append("\n         --port=port where database manager is listening (e.g. 8300)");
-        sb.append("\n         --username=username to access the database (e.g. postgres)");
-        sb.append("\n         --password=password to access the database");
-        sb.append("\n         --threads : number of threads used to read papers");
+        sb.append("\n         --hibernate=path to the hibernate.cfg.xml file");
+        sb.append("\n         --threads=number of threads used to read papers");
         log.warn(sb.toString());
     }
 
