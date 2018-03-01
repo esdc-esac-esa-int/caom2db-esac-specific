@@ -15,7 +15,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -69,7 +68,7 @@ public class Main {
             usage();
             System.exit(0);
         }
-        if (!am.isSet("hibernate") || !am.isSet("nthreads")) {
+        if (!am.isSet("hibernate") || !am.isSet("nthreads") || !am.isSet("password")) {
             usage();
             correct = false;
         }
@@ -106,12 +105,17 @@ public class Main {
         }
 
         String username = configuration.getProperty("hibernate.connection.username");
-        String password = configuration.getProperty("hibernate.connection.password");
+        //String password = configuration.getProperty("hibernate.connection.password");
+        String password = am.getValue("password");
+        configuration.setProperty("hibernate.connection.password", password);
+        String adsToken = configuration.getProperty("ads.token");
+        String adsUrl = configuration.getProperty("ads.url");
+        String adsAuth = configuration.getProperty("ads.authorization");
 
         String connection = "jdbc:postgresql://" + host;
         configuration.setProperty("hibernate.connection.url", "jdbc:postgresql://" + host + ":" + port + "/" + database);
 
-        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password);
+        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsToken, adsAuth);
 
         factory = configuration.buildSessionFactory();
 
@@ -217,35 +221,62 @@ public class Main {
                 Collections.sort(currentProposals, proposalComparator);
                 Collections.sort(newProposals, proposalComparator);
 
+                log.info("current proposals at first " + currentProposals.size());
+                log.info("new proposals at first " + newProposals.size());
+
                 List<Proposal> resultListToBeRemoved = processToBeRemoved(newProposals, currentProposals);
-                List<Proposal> resultListToBeUpdated = processToBeUpdated(newProposals, currentProposals);
+                //                log.info("current proposals after processToBeRemoved " + currentProposals.size());
+                //                log.info("new proposals after processToBeRemoved " + newProposals.size());
+
+                //                List<Proposal> resultListToBeUpdated = processToBeUpdated(newProposals, currentProposals);
+                //                log.info("current proposals after processToBeUpdated " + currentProposals.size());
+                //                log.info("new proposals after processToBeUpdated " + newProposals.size());
+
                 List<Proposal> resultListToBeAdded = processToBeAdded(newProposals, currentProposals);
+                log.info("current proposals after process " + currentProposals.size());
+                log.info("new proposals after process " + newProposals.size());
+                log.info("resultListToBeAdded after process " + resultListToBeAdded.size());
+                //                log.info("resultListToBeUpdate after process " + resultListToBeUpdated.size());
+                log.info("resultListToBeRemoved after process " + resultListToBeRemoved.size());
 
                 log.info("removing proposals");
                 for (Proposal p : resultListToBeRemoved) {
                     session.remove(p);
                 }
-                log.info("updating proposals");
-                for (Proposal p : resultListToBeUpdated) {
-                    session.update(p);
-                }
+                //                log.info("current proposals after removing " + currentProposals.size());
+                //                log.info("new proposals after removing " + newProposals.size());
+                //                log.info("resultListToBeRemoved after removing " + resultListToBeRemoved.size());
+                //                log.info("updating proposals");
+                //                for (Proposal p : resultListToBeUpdated) {
+                //                    session.update(p);
+                //                }
+                //                log.info("current proposals after update " + currentProposals.size());
+                //                log.info("new proposals after update " + newProposals.size());
+                //                log.info("resultListToBeUpdated after update " + resultListToBeUpdated.size());
+
                 log.info("adding proposals");
+
                 for (Proposal p : resultListToBeAdded) {
-                    log.info("-> added proposal '" + p.getId() + "' '" + p.getPropId() + "' '" + p.getNumObservations() + "' '" + p.getNumPublications() + "' '"
-                            + p.getPiName() + "' '" + p.getPubAbstract() + "' '" + p.getSciCat() + "' '" + p.getTitle() + "' '" + p.getType() + "' '"
-                            + p.getPublications());
                     session.save(p);
                 }
+                //                log.info("current proposals after adding " + currentProposals.size());
+                //                log.info("new proposals after adding " + newProposals.size());
+                //                log.info("resultListToBeAdded after adding " + resultListToBeAdded.size());
 
             } catch (Throwable ex) {
                 log.error("Failed to create sessionFactory object." + ex);
                 correct = false;
             } finally {
-                if (transaction != null) {
-                    transaction.commit();
-                }
-                if (session != null) {
-                    session.close();
+                try {
+                    if (transaction != null) {
+                        transaction.commit();
+                    }
+                    if (session != null) {
+                        session.close();
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    correct = false;
                 }
             }
 
@@ -257,40 +288,40 @@ public class Main {
         System.exit(0);
     }
 
-    private static List<Proposal> processToBeUpdated(List<Proposal> newProposals, List<Proposal> currentProposals) {
-        log.info("at this point both lists contain the same porposals but they can be composed differently");
-        List<Proposal> proposalsToBeUpdated = new ArrayList<Proposal>();
-        proposalsToBeUpdated.addAll(currentProposals);
-        for (int i = 0; i < proposalsToBeUpdated.size(); i++) {
-            Proposal currentProp = proposalsToBeUpdated.get(i);
-            Proposal readProp = newProposals.get(i);
-            currentProp.setCycle(readProp.getCycle());
-            currentProp.setPropId(readProp.getPropId());
-            currentProp.setNumObservations(readProp.getNumObservations());
-            currentProp.setNumPublications(readProp.getNumPublications());
-            currentProp.setPiName(readProp.getPiName());
-            currentProp.setPubAbstract(readProp.getPubAbstract());
-            currentProp.setSciCat(readProp.getSciCat());
-            currentProp.setTitle(readProp.getTitle());
-            currentProp.setType(readProp.getType());
-            currentProp.setPublications(readProp.getPublications());
-            log.info("-> updated proposal '" + currentProp.getId() + "' '" + currentProp.getPropId() + "' '" + currentProp.getNumObservations() + "' '"
-                    + currentProp.getNumPublications() + "' '" + currentProp.getPiName() + "' '" + currentProp.getPubAbstract() + "' '"
-                    + currentProp.getSciCat() + "' '" + currentProp.getTitle() + "' '" + currentProp.getType() + "' '" + currentProp.getPublications() + "' '");
-        }
-        return proposalsToBeUpdated;
-    }
+    //    private static long maxId(List<Proposal> proposals) {
+    //        long max = -1;
+    //        for (Proposal p : proposals) {
+    //            if (p.getId() <= max)
+    //                continue;
+    //            max = p.getId();
+    //        }
+    //        return max;
+    //    }
+
+    //    private static List<Proposal> processToBeUpdated(List<Proposal> newProposals, List<Proposal> currentProposals) {
+    //        List<Proposal> proposalsToBeUpdated = new ArrayList<Proposal>();
+    //
+    //        for (int i = 0; i < newProposals.size(); i++) {
+    //            Proposal pService = newProposals.get(i);
+    //            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+    //            if (foundInDB >= 0) {
+    //                proposalsToBeUpdated.add(pService);
+    //            }
+    //        }
+    //        return proposalsToBeUpdated;
+    //    }
 
     private static List<Proposal> processToBeAdded(List<Proposal> newProposals, List<Proposal> currentProposals) {
-        log.info("checking for proposals to be added");
+        log.info("checking for proposals to be added " + currentProposals.size());
         List<Proposal> proposalsToBeAdded = new ArrayList<Proposal>();
         for (Object p : newProposals) {
+            //            log.info("new proposal " + ((Proposal) p).getPropId() + " to be added");
             Proposal pService = (Proposal) p;
-            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
-            if (foundInDB < 0) {
-                //                log.info("proposal " + pService.getPropId() + " to be added");
+            //          int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+            boolean foundInDB = currentProposals.contains(pService);
+            if (!foundInDB) {
+                //                log.info("proposal " + pService.getPropId() + " not found in current set; to be added");
                 proposalsToBeAdded.add(pService);
-                currentProposals.add(pService);
             }
         }
         return proposalsToBeAdded;
@@ -301,13 +332,12 @@ public class Main {
         List<Proposal> proposalsToBeRemoved = new ArrayList<Proposal>();
         for (int i = 0; i < currentProposals.size(); i++) {
             Proposal pDB = currentProposals.get(i);
-            log.debug("porposal read from database with prop_id = " + pDB.getPropId());
-            int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
-            if (foundInService < 0) {
-                log.info("proposal " + pDB.getPropId() + " to be removed");
+            //            log.debug("porposal read from database with prop_id = " + pDB.getPropId());
+            //          int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
+            boolean foundInService = newProposals.contains(pDB);
+            if (!foundInService) {
+                //                log.info("proposal " + pDB.getPropId() + " to be removed");
                 proposalsToBeRemoved.add(pDB);
-                currentProposals.remove(pDB);
-                i--;
             }
         }
         return proposalsToBeRemoved;
@@ -393,6 +423,7 @@ public class Main {
         StringBuilder sb = new StringBuilder();
         sb.append("\n\nusage: esac-caom2-repo-publications [-v|--verbose|-d|--debug] [-h|--help] ...");
         sb.append("\n         --hibernate=path to the hibernate.cfg.xml file");
+        sb.append("\n         --password=db password to be used");
         sb.append("\n         --threads=number of threads used to read papers");
         log.warn(sb.toString());
     }
