@@ -1,7 +1,5 @@
 package esac.archive.ehst.dl.caom2.repo.client.publications.entities;
 
-import static javax.persistence.GenerationType.IDENTITY;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -10,6 +8,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
@@ -26,7 +25,7 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
      *
      */
     private static final long serialVersionUID = 1246362122131245438L;
-    private Integer id;
+    private Long id;
     private Long propId;
     private String piName;
     private String title;
@@ -115,12 +114,12 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
     }
 
     @Id
-    @GeneratedValue(strategy = IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "proposal_oid", unique = true, nullable = false)
-    public Integer getId() {
+    public Long getId() {
         return id;
     }
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -148,7 +147,11 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
         if (!(obj instanceof Proposal)) {
             return false;
         }
-        return this.getPropId().equals(((Proposal) obj).getPropId());
+        Proposal p = (Proposal) obj;
+        return this.getPropId().equals(p.getPropId()) && this.getCycle().equals(p.getCycle()) && this.getNumObservations().equals(p.getNumObservations())
+                && this.getNumPublications().equals(p.getNumPublications()) && this.getPiName().equals(p.getPiName())
+                && this.getPubAbstract().equals(p.getPubAbstract()) && this.getSciCat().equals(p.getSciCat()) && this.getTitle().equals(p.getTitle())
+                && this.getType().equals(p.getType());
     }
 
     @Override

@@ -7,7 +7,7 @@
 <session-factory>
     <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
     <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQL94Dialect</property>
-    <property name="show_sql">true</property>
+    <property name="show_sql">false</property>
 
     <property name="resource">https://masttest.stsci.edu/partners/papers</property>
 
@@ -15,7 +15,10 @@
     <property name="hibernate.connection.port">8300</property>
     <property name="hibernate.connection.database">ehst_dev_3</property>
     <property name="hibernate.connection.username">postgres</property>
-    <property name="hibernate.connection.password">eh2t_r00t</property>
+    
+    <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>
+    <property name="ads.url">https://api.adsabs.harvard.edu/v1/search/query?q=bibcode:BIBCODEfl=bibcode,title,author,abstract,year,page,volume</property>
+    <property name="ads.authorization">Authorization:Bearer:</property>
     
     <property name="hibernate.default_schema">caom2</property>
     

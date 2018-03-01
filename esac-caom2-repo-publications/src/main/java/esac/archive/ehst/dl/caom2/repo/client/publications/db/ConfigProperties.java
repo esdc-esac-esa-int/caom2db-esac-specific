@@ -21,9 +21,14 @@ public class ConfigProperties {
     private Integer port;
     private String username;
     private String password;
+    private String adsUrl;
+    private String adsToken;
+    private String adsAuth;
+
     private Boolean initiated = false;
 
-    public void init(String connection, String driver, String database, String schema, String host, Integer port, String username, String password) {
+    public void init(String connection, String driver, String database, String schema, String host, Integer port, String username, String password,
+            String adsUrl, String adsToken, String adsAuth) {
         this.setConnection(connection + ":" + port + "/" + database);
         this.setDriver(driver);
         this.setDatabase(database);
@@ -32,6 +37,9 @@ public class ConfigProperties {
         this.setPort(port);
         this.setUsername(username);
         this.setPassword(password);
+        this.setAdsUrl(adsUrl);
+        this.setAdsToken(adsToken);
+        this.setAdsAuth(adsAuth);
         initiated = true;
     }
     public String getConnection() {
@@ -81,5 +89,23 @@ public class ConfigProperties {
     }
     public void setPort(Integer port) {
         this.port = port;
+    }
+    public String getAdsUrl() {
+        return adsUrl;
+    }
+    public void setAdsUrl(String adsUrl) {
+        this.adsUrl = adsUrl;
+    }
+    public String getAdsToken() {
+        return adsToken;
+    }
+    public void setAdsToken(String adsToken) {
+        this.adsToken = adsToken;
+    }
+    public String getAdsAuth() {
+        return adsAuth;
+    }
+    public void setAdsAuth(String adsAuth) {
+        this.adsAuth = adsAuth;
     }
 }

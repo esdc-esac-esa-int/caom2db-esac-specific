@@ -1,14 +1,19 @@
 
 package esac.archive.ehst.dl.caom2.repo.client.publications;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
+import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
 
 /**
  *
@@ -18,7 +23,6 @@ import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
 public class Worker implements Callable<Proposal> {
 
     private static final Logger log = Logger.getLogger(Worker.class);
-    private static AtomicInteger id = new AtomicInteger(0);
 
     private JSONObject jsonProposal = null;
 
@@ -29,10 +33,9 @@ public class Worker implements Callable<Proposal> {
     @Override
     public Proposal call() throws Exception {
         Proposal proposal = new Proposal();
-        proposal.setId(id.getAndIncrement());
+        //        proposal.setId((Long) jsonProposal.get("prop_id"));
         proposal.setPropId((Long) jsonProposal.get("prop_id"));
         proposal.setTitle(((String) jsonProposal.get("title")).replace('\u0000', ' '));
-
         proposal.setType(((String) jsonProposal.get("type")).replace('\u0000', ' '));
         proposal.setCycle((Long) jsonProposal.get("cycle"));
         proposal.setSciCat(((String) jsonProposal.get("sci_cat")).replace('\u0000', ' '));
@@ -43,10 +46,37 @@ public class Worker implements Callable<Proposal> {
         for (Object bibcode : bibcodes) {
             String bib = ((String) bibcode).replace('\u0000', ' ');
             proposal.addBibcodes(bib);
+            proposal.addPublication(readPublication(bib));
         }
         proposal.setNumPublications(bibcodes.size());
         proposal.setNumObservations(0);
 
         return proposal;
+    }
+
+    private Publication readPublication(String bibcode) {
+        Publication pub = null;
+        try {
+            String url = ConfigProperties.getInstance().getAdsUrl().replace("BIBCODE", bibcode + "&");
+
+            URL readUrl = new URL(url);
+            URLConnection connection = readUrl.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestProperty(ConfigProperties.getInstance().getAdsAuth(), ConfigProperties.getInstance().getAdsToken());
+            connection.connect();
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String result = in.readLine();
+            log.info("publication read from ADS = " + result);
+            pub = processPublication(result);
+        } catch (Exception e) {
+            pub = null;
+        }
+        return pub;
+    }
+
+    private Publication processPublication(String result) {
+        Publication pub = new Publication();
+        return pub;
     }
 }

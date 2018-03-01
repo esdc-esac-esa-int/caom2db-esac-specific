@@ -4,18 +4,12 @@ import ca.nrc.cadc.util.ArgumentMap;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -69,7 +63,7 @@ public class Main {
             usage();
             System.exit(0);
         }
-        if (!am.isSet("hibernate") || !am.isSet("nthreads")) {
+        if (!am.isSet("hibernate") || !am.isSet("nthreads") || !am.isSet("password")) {
             usage();
             correct = false;
         }
@@ -106,12 +100,17 @@ public class Main {
         }
 
         String username = configuration.getProperty("hibernate.connection.username");
-        String password = configuration.getProperty("hibernate.connection.password");
+        //String password = configuration.getProperty("hibernate.connection.password");
+        String password = am.getValue("password");
+        configuration.setProperty("hibernate.connection.password", password);
+        String adsToken = configuration.getProperty("ads.token");
+        String adsUrl = configuration.getProperty("ads.url");
+        String adsAuth = configuration.getProperty("ads.authorization");
 
         String connection = "jdbc:postgresql://" + host;
         configuration.setProperty("hibernate.connection.url", "jdbc:postgresql://" + host + ":" + port + "/" + database);
 
-        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password);
+        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsToken, adsAuth);
 
         factory = configuration.buildSessionFactory();
 
@@ -122,36 +121,15 @@ public class Main {
         List newProposals = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
-            String oldRead = null;
             String newRead = ProposalsReader.getInstance().read(resource);
 
-            File file = new File("lastRead");
-            if (file.exists() && !file.isDirectory()) {
-                try (BufferedReader br = new BufferedReader(new FileReader("lastRead"))) {
-                    oldRead = br.readLine();
-                } catch (IOException e) {
-                    throw e;
-                }
-            }
+            JSONParser parser = new JSONParser();
+            Object object = parser.parse(newRead);
+            proposals = (JSONArray) object;
+            log.info("number of proposals found in service = " + proposals.size());
 
-            if (!newRead.equals(oldRead)) {
-                proposalsChanged = true;
-            }
-
-            if (proposalsChanged) {
-                try (BufferedWriter bw = new BufferedWriter(new FileWriter("lastRead"))) {
-                    bw.write(newRead);
-                } catch (IOException e) {
-                    throw e;
-                }
-                JSONParser parser = new JSONParser();
-                Object object = parser.parse(newRead);
-                proposals = (JSONArray) object;
-                log.info("number of proposals found in service = " + proposals.size());
-
-                for (Object o : proposals) {
-                    tasks.add(new Worker((JSONObject) o));
-                }
+            for (Object o : proposals) {
+                tasks.add(new Worker((JSONObject) o));
             }
 
         } catch (ClassCastException | IOException | ParseException e) {
@@ -190,8 +168,6 @@ public class Main {
                 System.exit(1);
             }
 
-            log.info("proposals read from service");
-
             try {
                 correct = tablesExist();
             } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
@@ -208,44 +184,54 @@ public class Main {
             Transaction transaction = null;
             List currentProposals = null;
             try {
-                log.debug("opening hibernate session");
                 session = factory.openSession();
                 transaction = session.beginTransaction();
                 currentProposals = session.createQuery("from Proposal").list();
-                log.info("number of proposals found in database = " + currentProposals.size());
-                log.info("porposals read from database");
+                log.info("number of proposals read from DB " + currentProposals.size());
+
                 Collections.sort(currentProposals, proposalComparator);
                 Collections.sort(newProposals, proposalComparator);
 
                 List<Proposal> resultListToBeRemoved = processToBeRemoved(newProposals, currentProposals);
-                List<Proposal> resultListToBeUpdated = processToBeUpdated(newProposals, currentProposals);
                 List<Proposal> resultListToBeAdded = processToBeAdded(newProposals, currentProposals);
+                log.info("proposals to be removed " + resultListToBeRemoved.size());
+                log.info("proposals to be added " + resultListToBeAdded.size());
 
-                log.info("removing proposals");
+                if (resultListToBeRemoved.size() > 0) {
+                    log.info("removing proposals");
+                }
                 for (Proposal p : resultListToBeRemoved) {
+                    log.info("proposal removed " + p.getPropId());
                     session.remove(p);
                 }
-                log.info("updating proposals");
-                for (Proposal p : resultListToBeUpdated) {
-                    session.update(p);
+
+                if (transaction != null) {
+                    transaction.commit();
                 }
-                log.info("adding proposals");
+                transaction = session.beginTransaction();
+
+                if (resultListToBeAdded.size() > 0) {
+                    log.info("adding proposals");
+                }
                 for (Proposal p : resultListToBeAdded) {
-                    log.info("-> added proposal '" + p.getId() + "' '" + p.getPropId() + "' '" + p.getNumObservations() + "' '" + p.getNumPublications() + "' '"
-                            + p.getPiName() + "' '" + p.getPubAbstract() + "' '" + p.getSciCat() + "' '" + p.getTitle() + "' '" + p.getType() + "' '"
-                            + p.getPublications());
-                    session.save(p);
+                    log.info("proposal added " + p.getPropId());
+                    session.saveOrUpdate(p);
                 }
 
             } catch (Throwable ex) {
                 log.error("Failed to create sessionFactory object." + ex);
                 correct = false;
             } finally {
-                if (transaction != null) {
-                    transaction.commit();
-                }
-                if (session != null) {
-                    session.close();
+                try {
+                    if (transaction != null) {
+                        transaction.commit();
+                    }
+                    if (session != null) {
+                        session.close();
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    correct = false;
                 }
             }
 
@@ -257,40 +243,15 @@ public class Main {
         System.exit(0);
     }
 
-    private static List<Proposal> processToBeUpdated(List<Proposal> newProposals, List<Proposal> currentProposals) {
-        log.info("at this point both lists contain the same porposals but they can be composed differently");
-        List<Proposal> proposalsToBeUpdated = new ArrayList<Proposal>();
-        proposalsToBeUpdated.addAll(currentProposals);
-        for (int i = 0; i < proposalsToBeUpdated.size(); i++) {
-            Proposal currentProp = proposalsToBeUpdated.get(i);
-            Proposal readProp = newProposals.get(i);
-            currentProp.setCycle(readProp.getCycle());
-            currentProp.setPropId(readProp.getPropId());
-            currentProp.setNumObservations(readProp.getNumObservations());
-            currentProp.setNumPublications(readProp.getNumPublications());
-            currentProp.setPiName(readProp.getPiName());
-            currentProp.setPubAbstract(readProp.getPubAbstract());
-            currentProp.setSciCat(readProp.getSciCat());
-            currentProp.setTitle(readProp.getTitle());
-            currentProp.setType(readProp.getType());
-            currentProp.setPublications(readProp.getPublications());
-            log.info("-> updated proposal '" + currentProp.getId() + "' '" + currentProp.getPropId() + "' '" + currentProp.getNumObservations() + "' '"
-                    + currentProp.getNumPublications() + "' '" + currentProp.getPiName() + "' '" + currentProp.getPubAbstract() + "' '"
-                    + currentProp.getSciCat() + "' '" + currentProp.getTitle() + "' '" + currentProp.getType() + "' '" + currentProp.getPublications() + "' '");
-        }
-        return proposalsToBeUpdated;
-    }
-
     private static List<Proposal> processToBeAdded(List<Proposal> newProposals, List<Proposal> currentProposals) {
         log.info("checking for proposals to be added");
         List<Proposal> proposalsToBeAdded = new ArrayList<Proposal>();
         for (Object p : newProposals) {
             Proposal pService = (Proposal) p;
-            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
-            if (foundInDB < 0) {
-                //                log.info("proposal " + pService.getPropId() + " to be added");
+            //          int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+            boolean foundInDB = currentProposals.contains(pService);
+            if (!foundInDB) {
                 proposalsToBeAdded.add(pService);
-                currentProposals.add(pService);
             }
         }
         return proposalsToBeAdded;
@@ -301,13 +262,10 @@ public class Main {
         List<Proposal> proposalsToBeRemoved = new ArrayList<Proposal>();
         for (int i = 0; i < currentProposals.size(); i++) {
             Proposal pDB = currentProposals.get(i);
-            log.debug("porposal read from database with prop_id = " + pDB.getPropId());
-            int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
-            if (foundInService < 0) {
-                log.info("proposal " + pDB.getPropId() + " to be removed");
+            //          int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
+            boolean foundInService = newProposals.contains(pDB);
+            if (!foundInService) {
                 proposalsToBeRemoved.add(pDB);
-                currentProposals.remove(pDB);
-                i--;
             }
         }
         return proposalsToBeRemoved;
@@ -393,6 +351,7 @@ public class Main {
         StringBuilder sb = new StringBuilder();
         sb.append("\n\nusage: esac-caom2-repo-publications [-v|--verbose|-d|--debug] [-h|--help] ...");
         sb.append("\n         --hibernate=path to the hibernate.cfg.xml file");
+        sb.append("\n         --password=db password to be used");
         sb.append("\n         --threads=number of threads used to read papers");
         log.warn(sb.toString());
     }
