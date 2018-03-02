@@ -23,12 +23,11 @@ public class ConfigProperties {
     private String password;
     private String adsUrl;
     private String adsToken;
-    private String adsAuth;
 
     private Boolean initiated = false;
 
     public void init(String connection, String driver, String database, String schema, String host, Integer port, String username, String password,
-            String adsUrl, String adsToken, String adsAuth) {
+            String adsUrl, String adsToken) {
         this.setConnection(connection + ":" + port + "/" + database);
         this.setDriver(driver);
         this.setDatabase(database);
@@ -39,7 +38,6 @@ public class ConfigProperties {
         this.setPassword(password);
         this.setAdsUrl(adsUrl);
         this.setAdsToken(adsToken);
-        this.setAdsAuth(adsAuth);
         initiated = true;
     }
     public String getConnection() {
@@ -101,11 +99,5 @@ public class ConfigProperties {
     }
     public void setAdsToken(String adsToken) {
         this.adsToken = adsToken;
-    }
-    public String getAdsAuth() {
-        return adsAuth;
-    }
-    public void setAdsAuth(String adsAuth) {
-        this.adsAuth = adsAuth;
     }
 }

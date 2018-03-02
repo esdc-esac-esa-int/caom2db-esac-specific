@@ -18,7 +18,6 @@
     
     <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>
     <property name="ads.url">https://api.adsabs.harvard.edu/v1/search/query?q=bibcode:BIBCODEfl=bibcode,title,author,abstract,year,page,volume</property>
-    <property name="ads.authorization">Authorization:Bearer:</property>
     
     <property name="hibernate.default_schema">caom2</property>
     

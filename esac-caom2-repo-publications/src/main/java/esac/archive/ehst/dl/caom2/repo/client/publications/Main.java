@@ -4,12 +4,18 @@ import ca.nrc.cadc.util.ArgumentMap;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -105,12 +111,11 @@ public class Main {
         configuration.setProperty("hibernate.connection.password", password);
         String adsToken = configuration.getProperty("ads.token");
         String adsUrl = configuration.getProperty("ads.url");
-        String adsAuth = configuration.getProperty("ads.authorization");
 
         String connection = "jdbc:postgresql://" + host;
         configuration.setProperty("hibernate.connection.url", "jdbc:postgresql://" + host + ":" + port + "/" + database);
 
-        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsToken, adsAuth);
+        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsToken);
 
         factory = configuration.buildSessionFactory();
 
@@ -121,8 +126,25 @@ public class Main {
         List newProposals = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
-            String newRead = ProposalsReader.getInstance().read(resource);
+            String newRead = null;
+            if (am.isSet("local")) {
+                File file = new File("lastRead");
+                if (file.exists() && !file.isDirectory()) {
+                    try (BufferedReader br = new BufferedReader(new FileReader("lastRead"))) {
+                        newRead = br.readLine();
+                    } catch (IOException e) {
+                        throw e;
+                    }
+                }
 
+            } else {
+                newRead = ProposalsReader.getInstance().read(resource);
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter("lastRead"))) {
+                    bw.write(newRead);
+                } catch (IOException e) {
+                    throw e;
+                }
+            }
             JSONParser parser = new JSONParser();
             Object object = parser.parse(newRead);
             proposals = (JSONArray) object;
@@ -192,6 +214,9 @@ public class Main {
                 Collections.sort(currentProposals, proposalComparator);
                 Collections.sort(newProposals, proposalComparator);
 
+                log.info("current proposals at first " + currentProposals.size());
+                log.info("new proposals at first " + newProposals.size());
+
                 List<Proposal> resultListToBeRemoved = processToBeRemoved(newProposals, currentProposals);
                 List<Proposal> resultListToBeAdded = processToBeAdded(newProposals, currentProposals);
                 log.info("proposals to be removed " + resultListToBeRemoved.size());
@@ -244,13 +269,14 @@ public class Main {
     }
 
     private static List<Proposal> processToBeAdded(List<Proposal> newProposals, List<Proposal> currentProposals) {
-        log.info("checking for proposals to be added");
+        log.info("checking for proposals to be added " + currentProposals.size());
         List<Proposal> proposalsToBeAdded = new ArrayList<Proposal>();
         for (Object p : newProposals) {
+            //            log.info("new proposal " + ((Proposal) p).getPropId() + " to be added");
             Proposal pService = (Proposal) p;
-            //          int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
-            boolean foundInDB = currentProposals.contains(pService);
-            if (!foundInDB) {
+            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+            //            boolean foundInDB = currentProposals.contains(pService);
+            if (foundInDB < 0) {
                 proposalsToBeAdded.add(pService);
             }
         }
@@ -262,9 +288,9 @@ public class Main {
         List<Proposal> proposalsToBeRemoved = new ArrayList<Proposal>();
         for (int i = 0; i < currentProposals.size(); i++) {
             Proposal pDB = currentProposals.get(i);
-            //          int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
-            boolean foundInService = newProposals.contains(pDB);
-            if (!foundInService) {
+            int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
+            //            boolean foundInService = newProposals.contains(pDB);
+            if (foundInService < 0) {
                 proposalsToBeRemoved.add(pDB);
             }
         }
@@ -353,6 +379,7 @@ public class Main {
         sb.append("\n         --hibernate=path to the hibernate.cfg.xml file");
         sb.append("\n         --password=db password to be used");
         sb.append("\n         --threads=number of threads used to read papers");
+        sb.append("\n         --local: use local file containing the set of proposals instead of the response of STScI service");
         log.warn(sb.toString());
     }
 
