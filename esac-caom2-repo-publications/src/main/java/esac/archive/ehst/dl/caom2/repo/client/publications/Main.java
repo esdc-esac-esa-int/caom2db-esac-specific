@@ -15,7 +15,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -41,6 +40,7 @@ import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.JdbcSingleton;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.UnableToCreatePorposalsTables;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
+import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
 
 /**
  *
@@ -51,6 +51,8 @@ public class Main {
     private static final Logger log = Logger.getLogger(Main.class);
     private static Configuration configuration = null;
     private static SessionFactory factory = null;
+
+    private static int maxConnectionsToADS = 100;
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Transactional(rollbackFor = Exception.class)
@@ -73,6 +75,10 @@ public class Main {
             usage();
             correct = false;
         }
+        if (!correct) {
+            System.exit(1);
+        }
+
         String hibConfigFile = am.getValue("hibernate");
         configuration = new Configuration().configure(hibConfigFile);
 
@@ -81,10 +87,6 @@ public class Main {
             nthreads = Integer.parseInt(am.getValue("nthreads"));
         } catch (NumberFormatException nfe) {
             usage();
-        }
-
-        if (!correct) {
-            System.exit(1);
         }
 
         String resource = configuration.getProperty("resource");
@@ -122,7 +124,8 @@ public class Main {
         boolean proposalsChanged = true;
         log.info("config initiated");
 
-        List<Callable<Proposal>> tasks = new ArrayList<>();
+        List<Callable<Proposal>> tasksProposals = new ArrayList<>();
+        List<Callable<Proposal>> tasksPublications = new ArrayList<>();
         List newProposals = new ArrayList<Proposal>();
         JSONArray proposals = null;
         try {
@@ -151,7 +154,7 @@ public class Main {
             log.info("number of proposals found in service = " + proposals.size());
 
             for (Object o : proposals) {
-                tasks.add(new Worker((JSONObject) o));
+                tasksProposals.add(new ProposalWorker((JSONObject) o));
             }
 
         } catch (ClassCastException | IOException | ParseException e) {
@@ -173,7 +176,7 @@ public class Main {
                 taskExecutor = Executors.newFixedThreadPool(nthreads);
                 List<Future<Proposal>> futures;
 
-                futures = taskExecutor.invokeAll(tasks);
+                futures = taskExecutor.invokeAll(tasksProposals);
 
                 for (Future<Proposal> f : futures) {
                     newProposals.add(f.get());
@@ -209,6 +212,13 @@ public class Main {
                 session = factory.openSession();
                 transaction = session.beginTransaction();
                 currentProposals = session.createQuery("from Proposal").list();
+                for (Object o : currentProposals) {
+                    Proposal p = (Proposal) o;
+                    for (Publication pub : p.getPublications()) {
+                        p.addBibcodes(pub.getBibcode());
+                    }
+                }
+
                 log.info("number of proposals read from DB " + currentProposals.size());
 
                 Collections.sort(currentProposals, proposalComparator);
@@ -217,29 +227,63 @@ public class Main {
                 log.info("current proposals at first " + currentProposals.size());
                 log.info("new proposals at first " + newProposals.size());
 
-                List<Proposal> resultListToBeRemoved = processToBeRemoved(newProposals, currentProposals);
-                List<Proposal> resultListToBeAdded = processToBeAdded(newProposals, currentProposals);
-                log.info("proposals to be removed " + resultListToBeRemoved.size());
-                log.info("proposals to be added " + resultListToBeAdded.size());
-
-                if (resultListToBeRemoved.size() > 0) {
-                    log.info("removing proposals");
+                if (currentProposals.size() > 0) {
+                    for (Object o : currentProposals) {
+                        Proposal p = (Proposal) o;
+                        if (!newProposals.contains(p)) {
+                            log.info("proposal removed " + p.getPropId());
+                            session.remove(p);
+                        }
+                    }
+                    if (transaction != null) {
+                        transaction.commit();
+                    }
+                    transaction = session.beginTransaction();
                 }
-                for (Proposal p : resultListToBeRemoved) {
-                    log.info("proposal removed " + p.getPropId());
-                    session.remove(p);
+                try {
+                    taskExecutor = Executors.newFixedThreadPool(nthreads);
+                    List<Future<Proposal>> futures;
+
+                    int index = 0;
+                    for (Object o : newProposals) {
+                        Proposal p = (Proposal) o;
+                        if (!currentProposals.contains(p)) {
+                            PublicationWorker worker = new PublicationWorker(p);
+                            tasksPublications.add(worker);
+                            index++;
+                            if (maxConnectionsToADS == index) {
+                                break;
+                            }
+                        }
+                    }
+
+                    newProposals.clear();
+
+                    futures = taskExecutor.invokeAll(tasksPublications);
+
+                    for (Future<Proposal> f : futures) {
+                        newProposals.add(f.get());
+                    }
+                } catch (InterruptedException | ExecutionException e) {
+                    log.error("Error when executing thread in ThreadPool: " + e.getMessage() + " caused by: " + e.getCause().toString());
+                    correct = false;
+                } finally {
+                    if (taskExecutor != null) {
+                        taskExecutor.shutdown();
+                    }
                 }
 
-                if (transaction != null) {
-                    transaction.commit();
-                }
-                transaction = session.beginTransaction();
-
-                if (resultListToBeAdded.size() > 0) {
+                if (newProposals.size() > 0) {
                     log.info("adding proposals");
                 }
-                for (Proposal p : resultListToBeAdded) {
+                for (Object o : newProposals) {
+                    Proposal p = (Proposal) o;
                     log.info("proposal added " + p.getPropId());
+
+                    for (String s : p.getBibcodes()) {
+                        log.info("bibcode " + s);
+                    }
+
                     session.saveOrUpdate(p);
                 }
 
@@ -272,11 +316,10 @@ public class Main {
         log.info("checking for proposals to be added " + currentProposals.size());
         List<Proposal> proposalsToBeAdded = new ArrayList<Proposal>();
         for (Object p : newProposals) {
-            //            log.info("new proposal " + ((Proposal) p).getPropId() + " to be added");
             Proposal pService = (Proposal) p;
-            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
-            //            boolean foundInDB = currentProposals.contains(pService);
-            if (foundInDB < 0) {
+            //            int foundInDB = Arrays.binarySearch(currentProposals.toArray(), pService);
+            boolean foundInDB = currentProposals.contains(pService);
+            if (!foundInDB) {
                 proposalsToBeAdded.add(pService);
             }
         }
@@ -288,9 +331,9 @@ public class Main {
         List<Proposal> proposalsToBeRemoved = new ArrayList<Proposal>();
         for (int i = 0; i < currentProposals.size(); i++) {
             Proposal pDB = currentProposals.get(i);
-            int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
-            //            boolean foundInService = newProposals.contains(pDB);
-            if (foundInService < 0) {
+            //            int foundInService = Arrays.binarySearch(newProposals.toArray(), pDB);
+            boolean foundInService = newProposals.contains(pDB);
+            if (!foundInService) {
                 proposalsToBeRemoved.add(pDB);
             }
         }

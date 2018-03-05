@@ -1,6 +1,7 @@
 package esac.archive.ehst.dl.caom2.repo.client.publications.entities;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -16,10 +17,13 @@ import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.apache.log4j.Logger;
+
 @Entity
 @Table(name = "proposal", catalog = "hst", uniqueConstraints = {@UniqueConstraint(columnNames = "proposal_oid"),
         @UniqueConstraint(columnNames = "proposal_id")})
 public class Proposal extends SimpleProposal implements java.io.Serializable, Comparable<Proposal> {
+    private static final Logger log = Logger.getLogger(Proposal.class);
 
     /**
      *
@@ -111,6 +115,10 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
 
     public void addPublication(Publication publication) {
         this.publications.add(publication);
+    }
+
+    public void addPublications(List<Publication> pubs) {
+        this.publications.addAll(pubs);
     }
 
     @Id

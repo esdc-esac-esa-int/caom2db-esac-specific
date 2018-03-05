@@ -44,7 +44,7 @@ public class Publication {
         this.bibcode = bibcode;
     }
 
-    @Column(name = "title", unique = false, nullable = false)
+    @Column(name = "title", unique = false)
     public String getTitle() {
         return title;
     }
@@ -52,7 +52,7 @@ public class Publication {
         this.title = title;
     }
 
-    @Column(name = "authors", unique = false, nullable = false)
+    @Column(name = "authors", unique = false)
     public String getAuthors() {
         return authors;
     }
@@ -60,7 +60,7 @@ public class Publication {
         this.authors = authors;
     }
 
-    @Column(name = "abstract", unique = false, nullable = false)
+    @Column(name = "abstract", unique = false)
     public String getPubAbstract() {
         return pubAbstract;
     }
@@ -68,7 +68,7 @@ public class Publication {
         this.pubAbstract = pubAbstract;
     }
 
-    @Column(name = "journal", unique = false, nullable = false)
+    @Column(name = "journal", unique = false)
     public String getJournal() {
         return journal;
     }
@@ -76,7 +76,7 @@ public class Publication {
         this.journal = journal;
     }
 
-    @Column(name = "year", unique = false, nullable = false)
+    @Column(name = "year", unique = false)
     public Short getYear() {
         return year;
     }
@@ -84,7 +84,7 @@ public class Publication {
         this.year = year;
     }
 
-    @Column(name = "page_number", unique = false, nullable = false)
+    @Column(name = "page_number", unique = false)
     public Integer getPageNumber() {
         return pageNumber;
     }
@@ -92,7 +92,7 @@ public class Publication {
         this.pageNumber = pageNumber;
     }
 
-    @Column(name = "volume_number", unique = false, nullable = false)
+    @Column(name = "volume_number", unique = false)
     public Short getVolumeNumber() {
         return volumeNumber;
     }
