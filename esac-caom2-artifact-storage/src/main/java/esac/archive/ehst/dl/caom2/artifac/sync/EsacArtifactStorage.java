@@ -231,7 +231,7 @@ public class EsacArtifactStorage implements ArtifactStore {
             throw new NotValidInstrumentException("'" + first + "'" + " is not a valid instrument");
         }
         root = filesLocation.endsWith("/") ? filesLocation.substring(0, filesLocation.length() - 1) : filesLocation;
-        String path = root + "/" + mast + "/" + hst + "/" + product + "/" + first + "/" + second + "/" + third + "/" + name;
+        String path = root + "/" + first + "/" + second + "/" + third + "/" + name;
         if (toBeCompressed) {
             path += ".gz";
         }
