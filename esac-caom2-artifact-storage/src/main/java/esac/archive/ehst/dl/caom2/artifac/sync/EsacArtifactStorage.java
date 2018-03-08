@@ -147,7 +147,12 @@ public class EsacArtifactStorage implements ArtifactStore {
             f.createNewFile();
         }
         if (toBeCompressed) {
-            try (FileOutputStream fos = new FileOutputStream(f); GZIPOutputStream gzipOS = new GZIPOutputStream(fos)) {
+            FileOutputStream fos = null;
+            GZIPOutputStream gzipOS = null;
+            try {
+                fos = new FileOutputStream(f);
+                gzipOS = new GZIPOutputStream(fos);
+
                 int read = 0;
                 byte[] bytes = new byte[2048];
 
@@ -163,10 +168,19 @@ public class EsacArtifactStorage implements ArtifactStore {
             } catch (IOException ex) {
                 log.error(ex.getMessage());
                 throw ex;
+            } finally {
+                //                if (fos != null) {
+                //                    fos.close();
+                //                }
+                if (gzipOS != null) {
+                    gzipOS.close();
+                }
             }
 
         } else {
-            try (FileOutputStream fos = new FileOutputStream(f)) {
+            FileOutputStream fos = null;
+            try {
+                fos = new FileOutputStream(f);
                 int read = 0;
                 byte[] bytes = new byte[2048];
 
@@ -181,6 +195,10 @@ public class EsacArtifactStorage implements ArtifactStore {
             } catch (IOException ex) {
                 log.error(ex.getMessage());
                 throw ex;
+            } finally {
+                if (fos != null) {
+                    fos.close();
+                }
             }
         }
         log.info("FINISH saving file '" + path + "'");
@@ -290,12 +308,10 @@ public class EsacArtifactStorage implements ArtifactStore {
         URI checksum = null;
         try {
             checksum = new URI(metadata.getMd5Sum());
-            log.info("Checksum received form ArtifactURI = '" + artifactURI.toString() + "' is '" + checksum + "'");
         } catch (URISyntaxException e1) {
             throw new TransientException("Unable to create URI from '" + metadata.getMd5Sum() + "'");
         }
         if (!contains(artifactURI, checksum)) {
-            log.info("ArtifactURI = '" + artifactURI.toString() + "' with checksum = '" + checksum + "' is not present locally");
             try {
                 if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
                     log.info("ArtifactURI = '" + artifactURI.toString() + "' saved locally");
@@ -303,7 +319,7 @@ public class EsacArtifactStorage implements ArtifactStore {
                     URI md5Uri = new URI(md5);
                     String check = "md5:" + checksum.toString();
                     log.info("CHECKSUM: calculated md5 for " + artifactURI + " = " + md5);
-                    log.info("CHECKSUM: expected md5 for " + artifactURI + " = " + check);
+                    log.info("CHECKSUM: expected md5 for   " + artifactURI + " = " + check);
                     if (checksum == null || md5.equals(check)) {
                         EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
                     } else {
