@@ -52,7 +52,7 @@ public class Main {
     private static Configuration configuration = null;
     private static SessionFactory factory = null;
 
-    private static int maxConnectionsToADS = 100;
+    private static int maxConnectionsToADS = 500;
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Transactional(rollbackFor = Exception.class)
@@ -208,10 +208,12 @@ public class Main {
             Session session = null;
             Transaction transaction = null;
             List currentProposals = null;
+            List currentPublications = null;
             try {
                 session = factory.openSession();
                 transaction = session.beginTransaction();
                 currentProposals = session.createQuery("from Proposal").list();
+                currentPublications = session.createQuery("from Publication").list();
                 for (Object o : currentProposals) {
                     Proposal p = (Proposal) o;
                     for (Publication pub : p.getPublications()) {
@@ -245,6 +247,7 @@ public class Main {
                     List<Future<Proposal>> futures;
 
                     int index = 0;
+                    PublicationWorker.setCurrentPublications(currentPublications);
                     for (Object o : newProposals) {
                         Proposal p = (Proposal) o;
                         if (!currentProposals.contains(p)) {

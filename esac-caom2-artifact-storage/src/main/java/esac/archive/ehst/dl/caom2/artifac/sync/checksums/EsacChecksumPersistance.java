@@ -124,10 +124,12 @@ public class EsacChecksumPersistance {
             stmt = con.createStatement();
             int res = stmt.executeUpdate(upsert);
             if (res != 1) {
-                throw new RuntimeException("Unexpected exception inserting artifact: " + artifactURI.toString());
+                log.error("Unexpected exception inserting artifact: " + artifactURI.toString());
+                result = false;
             }
         } catch (Exception ex) {
-            throw new RuntimeException("Unexpected exception when inserting: " + ex.getMessage());
+            log.error("Unexpected exception when inserting: " + ex.getMessage());
+            result = false;
         } finally {
             if (stmt != null) {
                 try {
@@ -159,7 +161,8 @@ public class EsacChecksumPersistance {
             rs = stmt.executeQuery(query);
             result = rs.next();
         } catch (Exception ex) {
-            throw new RuntimeException("Unexpected exception when selecting: " + ex.getMessage());
+            log.error("Unexpected exception when selecting: " + ex.getMessage());
+            result = false;
         } finally {
             if (rs != null) {
                 try {
@@ -199,7 +202,8 @@ public class EsacChecksumPersistance {
             rs = stmt.executeQuery(query);
             result = rs.next();
         } catch (Exception ex) {
-            throw new RuntimeException("Unexpected exception when selecting: " + ex.getMessage());
+            log.error("Unexpected exception when selecting: " + ex.getMessage());
+            result = false;
         } finally {
             if (rs != null) {
                 try {
@@ -242,7 +246,8 @@ public class EsacChecksumPersistance {
             log.debug("exists = " + exists);
 
         } catch (Exception ex) {
-            throw new RuntimeException("Unexpected exception when selecting: " + ex.getMessage());
+            log.error("Unexpected exception when selecting: " + ex.getMessage());
+            exists = false;
         } finally {
             if (rs != null) {
                 try {

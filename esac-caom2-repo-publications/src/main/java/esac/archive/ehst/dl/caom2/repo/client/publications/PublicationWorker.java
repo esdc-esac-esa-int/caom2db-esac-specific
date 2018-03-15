@@ -25,6 +25,8 @@ public class PublicationWorker implements Callable<Proposal> {
     Proposal proposal = null;
     private static final Logger log = Logger.getLogger(PublicationWorker.class);
 
+    private static List currentPublications = null;
+
     PublicationWorker(Proposal proposal) {
         this.proposal = proposal;
     }
@@ -175,12 +177,23 @@ public class PublicationWorker implements Callable<Proposal> {
             pub.setTitle(title);
             pub.setNumberOfObservations(0);
             pub.setNumberOfPublications(0);
-            pubs.add(pub);
+
+            synchronized (currentPublications) {
+                if (currentPublications == null || !currentPublications.contains(pub)) {
+                    currentPublications.add(pub);
+                    pubs.add(pub);
+                } else {
+                    pubs.add((Publication) currentPublications.get(currentPublications.indexOf(pub)));
+                }
+            }
         }
         return pubs;
     }
     public Proposal getProposal() {
         return proposal;
+    }
+    public static void setCurrentPublications(List currentPublications) {
+        PublicationWorker.currentPublications = currentPublications;
     }
 
 }

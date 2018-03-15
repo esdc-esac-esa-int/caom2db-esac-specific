@@ -73,13 +73,16 @@ public class EsacArtifactStorage implements ArtifactStore {
     public boolean contains(URI artifactURI, URI checksum) throws TransientException {
         log.info("Entering contains method");
         if (artifactURI == null) {
-            throw new IllegalArgumentException("ArtifactURI cannot be null");
+            log.error("Artifact URI is null");
+            return false;
         }
         init();
         boolean result = false;
         if (checksum != null) {
             result = EsacChecksumPersistance.getInstance().select(artifactURI, checksum);
         }
+
+        log.info("Leaving contains method");
         return result;
     }
 
@@ -122,6 +125,7 @@ public class EsacArtifactStorage implements ArtifactStore {
 
     private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
         String path = null;
+        boolean correct = true;
         try {
             path = parsePath(artifactURI.toString());
         } catch (NotValidInstrumentException e2) {
@@ -134,13 +138,13 @@ public class EsacArtifactStorage implements ArtifactStore {
         Path pathToFile = Paths.get(path);
         pathToFile = pathToFile.getParent();
 
-        log.info("START saving file '" + path + "'");
+        log.info("STARTED saving file '" + path + "'");
 
         try {
             Files.createDirectories(pathToFile);
         } catch (IOException e1) {
             log.error(e1.getMessage());
-            throw e1;
+            return false;
         }
         File f = new File(path);
         if (!f.exists()) {
@@ -156,27 +160,19 @@ public class EsacArtifactStorage implements ArtifactStore {
                 int read = 0;
                 byte[] bytes = new byte[2048];
 
-                log.info("writing file '" + path + "'");
-
                 while ((read = input.read(bytes)) != -1) {
                     gzipOS.write(bytes, 0, read);
                 }
                 gzipOS.flush();
 
-                log.info("file writen '" + path + "'");
-
             } catch (IOException ex) {
                 log.error(ex.getMessage());
-                throw ex;
+                correct = false;
             } finally {
-                //                if (fos != null) {
-                //                    fos.close();
-                //                }
                 if (gzipOS != null) {
                     gzipOS.close();
                 }
             }
-
         } else {
             FileOutputStream fos = null;
             try {
@@ -184,26 +180,23 @@ public class EsacArtifactStorage implements ArtifactStore {
                 int read = 0;
                 byte[] bytes = new byte[2048];
 
-                log.info("writing file '" + path + "'");
-
                 while ((read = input.read(bytes)) != -1) {
                     fos.write(bytes, 0, read);
                 }
                 fos.flush();
-                log.info("file writen '" + path + "'");
 
             } catch (IOException ex) {
                 log.error(ex.getMessage());
-                throw ex;
+                correct = false;
             } finally {
                 if (fos != null) {
                     fos.close();
                 }
             }
         }
-        log.info("FINISH saving file '" + path + "'");
+        log.info("FINISHED saving file '" + path + "'");
 
-        return true;
+        return correct;
     }
 
     private String parsePath(String artifact) throws NotValidInstrumentException {
@@ -298,23 +291,28 @@ public class EsacArtifactStorage implements ArtifactStore {
     @Override
     public void store(URI artifactURI, InputStream data, FileMetadata metadata)
             throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
-        log.info("Entering store method: artifactURI = " + artifactURI.toString() + " metadata = " + metadata);
+        log.info("Entering store method");
         ByteArrayOutputStream baos = saveInputStream(data);
 
         if (artifactURI == null || metadata == null || metadata.getMd5Sum() == null) {
-            throw new IllegalArgumentException("Neither ArtifactURI nor FileMetadata can be null");
+            log.error("Neither ArtifactURI nor FileMetadata can be null");
+            return;
+        }
+        if (baos == null) {
+            log.error("Was not possible to copy the InputStream");
+            return;
         }
         init();
         URI checksum = null;
         try {
             checksum = new URI(metadata.getMd5Sum());
         } catch (URISyntaxException e1) {
-            throw new TransientException("Unable to create URI from '" + metadata.getMd5Sum() + "'");
+            log.error("Unable to create URI from '" + metadata.getMd5Sum() + "'");
+            return;
         }
-        if (!contains(artifactURI, checksum)) {
-            try {
+        try {
+            if (!contains(artifactURI, checksum)) {
                 if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
-                    log.info("ArtifactURI = '" + artifactURI.toString() + "' saved locally");
                     String md5 = calculateMD5Sum(new ByteArrayInputStream(baos.toByteArray()));
                     URI md5Uri = new URI(md5);
                     String check = "md5:" + checksum.toString();
@@ -323,15 +321,25 @@ public class EsacArtifactStorage implements ArtifactStore {
                     if (checksum == null || md5.equals(check)) {
                         EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
                     } else {
-                        throw new TransientException("Mismatch between received checksum (" + check + ") and the calculeted one (" + md5 + ").");
+                        log.error("Mismatch between received checksum (" + check + ") and the calculeted one (" + md5 + ").");
                     }
                 }
-            } catch (Exception e) {
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        } finally {
+            try {
+                if (baos != null) {
+                    baos.close();
+                }
+                if (data != null) {
+                    data.close();
+                }
+            } catch (IOException e) {
                 log.error(e.getMessage());
-                throw new AccessControlException(e.getCause().getMessage());
             }
         }
-
+        log.info("Leaving store method");
     }
 
     private ByteArrayOutputStream saveInputStream(InputStream data) {

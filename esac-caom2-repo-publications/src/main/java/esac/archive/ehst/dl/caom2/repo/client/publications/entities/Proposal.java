@@ -159,7 +159,7 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
         return this.getPropId().equals(p.getPropId()) && this.getCycle().equals(p.getCycle()) && this.getNumObservations().equals(p.getNumObservations())
                 && this.getNumPublications().equals(p.getNumPublications()) && this.getPiName().equals(p.getPiName())
                 && this.getPubAbstract().equals(p.getPubAbstract()) && this.getSciCat().equals(p.getSciCat()) && this.getTitle().equals(p.getTitle())
-                && this.getType().equals(p.getType());
+                && this.getType().equals(p.getType()) && this.getNumPublications().equals(p.getNumPublications());
     }
 
     @Override

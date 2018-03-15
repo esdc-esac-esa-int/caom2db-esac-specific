@@ -134,4 +134,16 @@ public class Publication {
     public void setProposals(List<Proposal> proposals) {
         this.proposals = proposals;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof Publication)) {
+            return false;
+        }
+        Publication pub = (Publication) obj;
+        return bibcode.equals(pub.getBibcode());
+    }
 }
