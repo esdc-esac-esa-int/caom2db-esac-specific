@@ -15,7 +15,7 @@ sourceCompatibility = 1.7
 
 group = 'esac.archive'
 
-version = '1.0.4'
+version = '1.0.5'
 
 mainClassName = 'esac.archive.ehst.dl.caom2.artifac.sync.Main'
 
@@ -28,8 +28,8 @@ dependencies {
     
     compile 'org.opencadc:cadc-registry:[1.2.2,)'
     compile 'org.opencadc:caom2:[2.3.9,)'
-    compile 'org.opencadc:caom2persistence:[2.3.15,)'
-    compile 'org.opencadc:caom2-artifact-sync:[2.3.10,)'
+    compile 'org.opencadc:caom2persistence:[2.3.17,)'
+    compile 'org.opencadc:caom2-artifact-sync:[2.3.13,)'
 
     runtime 'net.sourceforge.jtds:jtds:1.+'
     
