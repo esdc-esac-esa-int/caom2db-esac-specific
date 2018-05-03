@@ -20,7 +20,7 @@ public class UrlConnectionReader {
     private static final Logger log = Logger.getLogger(UrlConnectionReader.class);
 
     public static String read(String url) throws MalformedURLException, IOException {
-        String response = "";
+        StringBuilder response = new StringBuilder("");
         boolean correct = true;
         URL service = null;
         HttpsURLConnection con = null;
@@ -49,10 +49,11 @@ public class UrlConnectionReader {
             in = new BufferedReader(new InputStreamReader(is));
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
-                response = response.concat(inputLine);
+                response.append(inputLine);
             }
         } catch (IOException ex) {
             log.error("Error reading output from url '" + url + "': " + ex.getMessage());
+            ex.printStackTrace();
             correct = false;
         } finally {
             if (in != null) {
@@ -65,7 +66,7 @@ public class UrlConnectionReader {
         if (!correct) {
             return null;
         }
-        return response;
+        return response.toString();
     }
 
 }

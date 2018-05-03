@@ -156,10 +156,46 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
             return false;
         }
         Proposal p = (Proposal) obj;
-        return this.getPropId().equals(p.getPropId()) && this.getCycle().equals(p.getCycle()) && this.getNumObservations().equals(p.getNumObservations())
-                && this.getNumPublications().equals(p.getNumPublications()) && this.getPiName().equals(p.getPiName())
-                && this.getPubAbstract().equals(p.getPubAbstract()) && this.getSciCat().equals(p.getSciCat()) && this.getTitle().equals(p.getTitle())
-                && this.getType().equals(p.getType()) && this.getNumPublications().equals(p.getNumPublications());
+        //        if (p.getPropId() == 1019 || this.getPropId() == 1019) {
+        //            log.info("this.getPropId().equals(p.getPropId()) " + this.getPropId().equals(p.getPropId()));
+        //            log.info("this.getCycle().equals(p.getCycle()) " + this.getCycle().equals(p.getCycle()));
+        //            log.info("this.getNumPublications().equals(p.getNumPublications()) " + this.getNumPublications().equals(p.getNumPublications()));
+        //            log.info("this.getPubAbstract().equals(p.getPubAbstract()) " + this.getPubAbstract().equals(p.getPubAbstract()));
+        //            log.info("this.getSciCat().equals(p.getSciCat()) " + this.getSciCat().equals(p.getSciCat()));
+        //            log.info("this.getTitle().equals(p.getTitle()) " + this.getTitle().equals(p.getTitle()));
+        //            log.info("this.getType().equals(p.getType()) " + this.getType().equals(p.getType()));
+        //            log.info("this.getNumPublications().equals(p.getNumPublications()) " + this.getNumPublications().equals(p.getNumPublications()));
+        //            log.info("this.getBibcodes().size() == p.getBibcodes().size() " + (this.getBibcodes().size() == p.getBibcodes().size()));
+        //        }
+        return this.getPropId().equals(p.getPropId());
+        //                && this.getCycle().equals(p.getCycle()) && this.getNumObservations().equals(p.getNumObservations())
+        //                && this.getNumPublications().equals(p.getNumPublications()) && this.getPiName().equals(p.getPiName())
+        //                && this.getPubAbstract().equals(p.getPubAbstract()) && this.getSciCat().equals(p.getSciCat()) && this.getTitle().equals(p.getTitle())
+        //                && this.getType().equals(p.getType()) && this.getNumPublications().equals(p.getNumPublications())
+        //                && this.getBibcodes().size() == p.getBibcodes().size();
+    }
+
+    private boolean samePublications(Proposal p1, Proposal p2) {
+        boolean same = true;
+        for (String bib1 : p1.getBibcodes()) {
+            log.info("bib1 " + bib1);
+            if (p2.getBibcodes().contains(bib1)) {
+                continue;
+            }
+            same = false;
+            break;
+        }
+        if (same) {
+            for (String bib2 : p2.getBibcodes()) {
+                log.info("bib2 " + bib2);
+                if (p1.getBibcodes().contains(bib2)) {
+                    continue;
+                }
+                same = false;
+                break;
+            }
+        }
+        return same;
     }
 
     @Override

@@ -22,25 +22,25 @@ import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
 
 public class PublicationWorker implements Callable<Proposal> {
-    Proposal proposal = null;
+    private Proposal proposal = null;
     private static final Logger log = Logger.getLogger(PublicationWorker.class);
 
     private static List currentPublications = null;
 
     PublicationWorker(Proposal proposal) {
-        this.proposal = proposal;
+        this.setProposal(proposal);
     }
     @Override
     public Proposal call() throws Exception {
-        if (proposal == null) {
+        if (getProposal() == null) {
             return null;
         }
-        Set<Publication> pubs = readPublications(proposal.getBibcodes());
-        proposal.setPublications(pubs);
-        return proposal;
+        Set<Publication> pubs = readPublications(getProposal().getBibcodes());
+        getProposal().setPublications(pubs);
+        return getProposal();
     }
 
-    private Set<Publication> readPublications(Set<String> bibcodes) {
+    private Set<Publication> readPublications(Set<String> bibcodes) throws Exception {
         Set<Publication> pubs = new HashSet<Publication>();
         BufferedReader in = null;
         URL readUrl = null;
@@ -56,9 +56,10 @@ public class PublicationWorker implements Callable<Proposal> {
             max++;
             accumulated++;
             if (max == 10 || accumulated == size) { // ADS API limited to 10 bibcodes per batch
+                String url = "";
                 try {
                     bibs = bibs.substring(0, bibs.length() - 4);
-                    String url = ConfigProperties.getInstance().getAdsUrl().replace("BIBCODE", bibs + "&");
+                    url = ConfigProperties.getInstance().getAdsUrl().replace("BIBCODE", bibs + "&");
                     //                    log.info("inside readPublication with token " + ConfigProperties.getInstance().getAdsToken() + " for url = " + url);
 
                     readUrl = new URL(url);
@@ -75,14 +76,14 @@ public class PublicationWorker implements Callable<Proposal> {
                         pubs.addAll(processed);
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    pubs = null;
+                    String exceptionMesssage = e.getMessage();
+                    log.error(exceptionMesssage);
+                    throw new Exception(exceptionMesssage);
                 } finally {
                     if (in != null) {
                         try {
                             in.close();
                         } catch (IOException e) {
-                            e.printStackTrace();
                         }
                     }
                     if (connection != null) {
@@ -194,6 +195,9 @@ public class PublicationWorker implements Callable<Proposal> {
     }
     public static void setCurrentPublications(List currentPublications) {
         PublicationWorker.currentPublications = currentPublications;
+    }
+    public void setProposal(Proposal proposal) {
+        this.proposal = proposal;
     }
 
 }

@@ -1,5 +1,8 @@
 package esac.archive.ehst.dl.caom2.repo.client.publications.db;
 
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+
 public class ConfigProperties {
 
     private static ConfigProperties instance = null;
@@ -23,11 +26,17 @@ public class ConfigProperties {
     private String password;
     private String adsUrl;
     private String adsToken;
+    private String resource;
+    private Integer nThreads;
+    private Session session;
+    private SessionFactory factory;
+    private boolean isLocal = false;
+    private Integer connsToADS = null;
 
     private Boolean initiated = false;
 
     public void init(String connection, String driver, String database, String schema, String host, Integer port, String username, String password,
-            String adsUrl, String adsToken) {
+            String adsUrl, String adsToken, String resource, Integer nThreads, Integer connsToADS, SessionFactory factory, boolean isLocal) {
         this.setConnection(connection + ":" + port + "/" + database);
         this.setDriver(driver);
         this.setDatabase(database);
@@ -38,6 +47,12 @@ public class ConfigProperties {
         this.setPassword(password);
         this.setAdsUrl(adsUrl);
         this.setAdsToken(adsToken);
+        this.setResource(resource);
+        this.setnThreads(nThreads);
+        this.setFactory(factory);
+        this.setLocal(isLocal);
+        this.setConnsToADS(connsToADS);
+        //        this.setSession(session);
         initiated = true;
     }
     public String getConnection() {
@@ -99,5 +114,41 @@ public class ConfigProperties {
     }
     public void setAdsToken(String adsToken) {
         this.adsToken = adsToken;
+    }
+    public String getResource() {
+        return resource;
+    }
+    public void setResource(String resource) {
+        this.resource = resource;
+    }
+    public Integer getnThreads() {
+        return nThreads;
+    }
+    public void setnThreads(Integer nThreads) {
+        this.nThreads = nThreads;
+    }
+    public SessionFactory getFactory() {
+        return factory;
+    }
+    public void setFactory(SessionFactory factory) {
+        this.factory = factory;
+    }
+    //    public Session getSession() {
+    //        return session;
+    //    }
+    //    public void setSession(Session session) {
+    //        this.session = session;
+    //    }
+    public boolean isLocal() {
+        return isLocal;
+    }
+    public void setLocal(boolean isLocal) {
+        this.isLocal = isLocal;
+    }
+    public Integer getConnsToADS() {
+        return connsToADS;
+    }
+    public void setConnsToADS(Integer connsToADS) {
+        this.connsToADS = connsToADS;
     }
 }
