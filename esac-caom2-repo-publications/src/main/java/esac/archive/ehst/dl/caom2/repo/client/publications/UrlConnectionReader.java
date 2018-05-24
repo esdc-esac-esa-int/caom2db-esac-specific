@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -23,7 +24,7 @@ public class UrlConnectionReader {
         StringBuilder response = new StringBuilder("");
         boolean correct = true;
         URL service = null;
-        HttpsURLConnection con = null;
+        URLConnection con = null;
         BufferedReader in = null;
         InputStream is = null;
         try {
@@ -36,7 +37,11 @@ public class UrlConnectionReader {
             return null;
         }
         try {
-            con = (HttpsURLConnection) service.openConnection();
+            if (url.startsWith("https")) {
+                con = (HttpsURLConnection) service.openConnection();
+            } else {
+                con = service.openConnection();
+            }
             is = con.getInputStream();
         } catch (IOException ex) {
             log.error("Error opening connection to url '" + url + "': " + ex.getMessage());

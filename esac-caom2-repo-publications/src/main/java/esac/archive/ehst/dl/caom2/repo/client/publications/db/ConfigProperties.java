@@ -1,6 +1,5 @@
 package esac.archive.ehst.dl.caom2.repo.client.publications.db;
 
-import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 
 public class ConfigProperties {
@@ -25,18 +24,16 @@ public class ConfigProperties {
     private String username;
     private String password;
     private String adsUrl;
+    private String adsParams;
     private String adsToken;
     private String resource;
     private Integer nThreads;
-    private Session session;
     private SessionFactory factory;
     private boolean isLocal = false;
-    private Integer connsToADS = null;
-
-    private Boolean initiated = false;
+    private String observationsUpdate;
 
     public void init(String connection, String driver, String database, String schema, String host, Integer port, String username, String password,
-            String adsUrl, String adsToken, String resource, Integer nThreads, Integer connsToADS, SessionFactory factory, boolean isLocal) {
+            String adsUrl, String adsParams, String adsToken, String resource, Integer nThreads, SessionFactory factory, boolean isLocal, String obsUpdate) {
         this.setConnection(connection + ":" + port + "/" + database);
         this.setDriver(driver);
         this.setDatabase(database);
@@ -46,14 +43,13 @@ public class ConfigProperties {
         this.setUsername(username);
         this.setPassword(password);
         this.setAdsUrl(adsUrl);
+        this.setAdsParams(adsParams);
         this.setAdsToken(adsToken);
         this.setResource(resource);
         this.setnThreads(nThreads);
         this.setFactory(factory);
         this.setLocal(isLocal);
-        this.setConnsToADS(connsToADS);
-        //        this.setSession(session);
-        initiated = true;
+        this.setObservationsUpdate(obsUpdate);
     }
     public String getConnection() {
         return connection;
@@ -133,22 +129,22 @@ public class ConfigProperties {
     public void setFactory(SessionFactory factory) {
         this.factory = factory;
     }
-    //    public Session getSession() {
-    //        return session;
-    //    }
-    //    public void setSession(Session session) {
-    //        this.session = session;
-    //    }
     public boolean isLocal() {
         return isLocal;
     }
     public void setLocal(boolean isLocal) {
         this.isLocal = isLocal;
     }
-    public Integer getConnsToADS() {
-        return connsToADS;
+    public String getAdsParams() {
+        return adsParams;
     }
-    public void setConnsToADS(Integer connsToADS) {
-        this.connsToADS = connsToADS;
+    public void setAdsParams(String adsParams) {
+        this.adsParams = adsParams;
+    }
+    public String getObservationsUpdate() {
+        return observationsUpdate;
+    }
+    public void setObservationsUpdate(String observationsUpdate) {
+        this.observationsUpdate = observationsUpdate;
     }
 }

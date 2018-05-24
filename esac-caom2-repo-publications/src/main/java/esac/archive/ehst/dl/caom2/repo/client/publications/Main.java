@@ -3,10 +3,12 @@ package esac.archive.ehst.dl.caom2.repo.client.publications;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
+import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Collections;
+import java.sql.Statement;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -16,8 +18,10 @@ import org.hibernate.cfg.Configuration;
 import org.springframework.transaction.annotation.Transactional;
 
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
+import esac.archive.ehst.dl.caom2.repo.client.publications.db.JdbcSingleton;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.UnableToCreatePorposalsTables;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
+import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
 
 /**
  *
@@ -34,10 +38,18 @@ public class Main {
         boolean correct = true;
         ArgumentMap am = new ArgumentMap(args);
         if (readConfig(am)) {
+            SessionFactory factory = ConfigProperties.getInstance().getFactory();
+            Session session = factory.openSession();
             String resource = ConfigProperties.getInstance().getResource();
             Integer threads = ConfigProperties.getInstance().getnThreads();
+            String adsUrl = ConfigProperties.getInstance().getAdsUrl();
+            String adsParams = ConfigProperties.getInstance().getAdsParams();
+            String adsToken = ConfigProperties.getInstance().getAdsToken();
             List<Proposal> allProposals = Manager.readAllProposals(resource, threads);
-            if (allProposals != null) {
+            List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
+            Map<String, Publication> allPublications = Manager.readAllPublications(allBibcodes, adsUrl, adsParams, adsToken);
+            allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
+            if (allProposals != null && allPublications != null) {
                 try {
                     correct = Manager.tablesExist();
                 } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
@@ -46,22 +58,55 @@ public class Main {
                 }
                 if (correct) {
                     log.info("DB tables exist");
-                    SessionFactory factory = ConfigProperties.getInstance().getFactory();
-                    Session session = factory.openSession();
                     List<Proposal> currentProposals = Manager.readCurrentProposals(session);
                     if (currentProposals != null) {
-                        Collections.sort(currentProposals, proposalComparator);
-                        Collections.sort(allProposals, proposalComparator);
                         log.info("current proposals " + currentProposals.size());
-                        log.info("new proposals " + allProposals.size());
-                        Integer nThreads = ConfigProperties.getInstance().getnThreads();
-                        Manager.removeOldProposals(session, currentProposals, allProposals);
-                        Manager.addNewProposals(session, currentProposals, allProposals, nThreads);
+                        log.info("all proposals     " + allProposals.size());
+                        try {
+                            Manager.removeOldProposals(session, currentProposals, allProposals);
+                            Manager.addNewProposals(session, currentProposals, allProposals);
+                        } catch (Exception ex) {
+                            log.error(ex.getMessage());
+                            correct = false;
+                        }
                     }
                 }
             }
         }
 
+        if (correct) {
+            log.info("updating no_observations");
+            Connection con = null;
+            Statement stmt = null;
+            try {
+                con = JdbcSingleton.getInstance().getConnection();
+                stmt = con.createStatement();
+                if (stmt.execute(ConfigProperties.getInstance().getObservationsUpdate())) {
+                    log.info("no_observations updated correctly");
+                }
+            } catch (SQLException | PropertyVetoException e) {
+                e.printStackTrace();
+                correct = false;
+            } finally {
+                if (stmt != null) {
+                    try {
+                        stmt.close();
+                    } catch (SQLException e) {
+                        correct = false;
+                        e.printStackTrace();
+                    }
+                }
+                if (con != null) {
+                    try {
+                        con.close();
+                    } catch (SQLException e) {
+                        correct = false;
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+        }
         System.exit(0);
     }
 
@@ -91,11 +136,9 @@ public class Main {
 
         configuration = new Configuration().configure(hibConfigFile);
 
-        Integer maxConnectionsToADS = null;
         Integer nthreads = null;
         try {
             nthreads = Integer.parseInt(am.getValue("nthreads"));
-            maxConnectionsToADS = Integer.parseInt(am.getValue("maxConnectionsToADS"));
         } catch (NumberFormatException nfe) {
             usage();
         }
@@ -119,14 +162,16 @@ public class Main {
         configuration.setProperty("hibernate.connection.password", password);
         String adsToken = configuration.getProperty("ads.token");
         String adsUrl = configuration.getProperty("ads.url");
+        String adsParams = configuration.getProperty("ads.params");
+        String obsUpdate = configuration.getProperty("obs.update");
 
         String connection = "jdbc:postgresql://" + host;
         configuration.setProperty("hibernate.connection.url", "jdbc:postgresql://" + host + ":" + port + "/" + database);
 
         factory = configuration.buildSessionFactory();
 
-        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsToken, resource, nthreads,
-                maxConnectionsToADS, factory, isLocal);
+        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsParams, adsToken, resource,
+                nthreads, factory, isLocal, obsUpdate);
 
         log.info("config initiated");
         return correct;

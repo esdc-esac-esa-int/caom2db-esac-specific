@@ -4,16 +4,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
@@ -40,9 +37,19 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
     private Integer numPublications;
     private Integer numObservations;
 
-    private Set<Publication> publications = new HashSet<Publication>();
+    private Set<PublicationProposal> publicationProposal = new HashSet<PublicationProposal>();
 
     public Proposal() {
+    }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "proposal_oid", unique = true, nullable = false)
+    public Long getId() {
+        return id;
+    }
+    public void setId(Long id) {
+        this.id = id;
     }
 
     @Column(name = "proposal_id", unique = true, nullable = false)
@@ -101,36 +108,6 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
         this.pubAbstract = pubAbstract;
     }
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinTable(name = "publication_proposal", catalog = "hst", joinColumns = {
-            @JoinColumn(name = "proposal_oid", nullable = false, updatable = true)}, inverseJoinColumns = {
-                    @JoinColumn(name = "publication_oid", nullable = false, updatable = true)})
-    public Set<Publication> getPublications() {
-        return publications;
-    }
-
-    public void setPublications(Set<Publication> publications) {
-        this.publications = publications;
-    }
-
-    public void addPublication(Publication publication) {
-        this.publications.add(publication);
-    }
-
-    public void addPublications(List<Publication> pubs) {
-        this.publications.addAll(pubs);
-    }
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "proposal_oid", unique = true, nullable = false)
-    public Long getId() {
-        return id;
-    }
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     @Column(name = "no_publications", unique = false, nullable = false)
     public Integer getNumPublications() {
         return numPublications;
@@ -145,6 +122,23 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
     }
     public void setNumObservations(Integer numObservations) {
         this.numObservations = numObservations;
+    }
+
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "proposal")
+    public Set<PublicationProposal> getPublicationsProposals() {
+        return publicationProposal;
+    }
+
+    public void setPublicationsProposals(Set<PublicationProposal> publicationProposal) {
+        this.publicationProposal = publicationProposal;
+    }
+
+    public void addPublicationProposal(PublicationProposal publicationProposal) {
+        this.publicationProposal.add(publicationProposal);
+    }
+
+    public void addPublicationProposal(List<PublicationProposal> publicationProposals) {
+        this.publicationProposal.addAll(publicationProposals);
     }
 
     @Override
@@ -167,7 +161,7 @@ public class Proposal extends SimpleProposal implements java.io.Serializable, Co
         //            log.info("this.getNumPublications().equals(p.getNumPublications()) " + this.getNumPublications().equals(p.getNumPublications()));
         //            log.info("this.getBibcodes().size() == p.getBibcodes().size() " + (this.getBibcodes().size() == p.getBibcodes().size()));
         //        }
-        return this.getPropId().equals(p.getPropId());
+        return this.getPropId().equals(p.getPropId()) && this.getNumPublications().equals(p.getNumPublications());
         //                && this.getCycle().equals(p.getCycle()) && this.getNumObservations().equals(p.getNumObservations())
         //                && this.getNumPublications().equals(p.getNumPublications()) && this.getPiName().equals(p.getPiName())
         //                && this.getPubAbstract().equals(p.getPubAbstract()) && this.getSciCat().equals(p.getSciCat()) && this.getTitle().equals(p.getTitle())

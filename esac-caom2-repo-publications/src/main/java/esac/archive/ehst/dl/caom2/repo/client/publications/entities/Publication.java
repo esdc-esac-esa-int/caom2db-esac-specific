@@ -2,22 +2,26 @@ package esac.archive.ehst.dl.caom2.repo.client.publications.entities;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.ManyToMany;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = "publication", catalog = "hst", uniqueConstraints = {@UniqueConstraint(columnNames = "publication_oid"),
         @UniqueConstraint(columnNames = "bib_code")})
-public class Publication {
+public class Publication implements java.io.Serializable {
+    /**
+     *
+     */
+    private static final long serialVersionUID = 6801137300151998329L;
     private Integer publicationOid;
     private String bibcode;
     private String title;
@@ -30,10 +34,20 @@ public class Publication {
     private Integer numberOfObservations = 0;
     private Integer numberOfProposals = 0;
 
-    private List<Proposal> proposals = new ArrayList<Proposal>();
+    private Set<PublicationProposal> publicationProposals = new HashSet<PublicationProposal>();
 
     public Publication() {
 
+    }
+
+    @Id
+    @GeneratedValue(strategy = IDENTITY)
+    @Column(name = "publication_oid", unique = true, nullable = false)
+    public Integer getPublicationOid() {
+        return publicationOid;
+    }
+    public void setPublicationOid(Integer publicationOid) {
+        this.publicationOid = publicationOid;
     }
 
     @Column(name = "bib_code", unique = true, nullable = false)
@@ -109,30 +123,24 @@ public class Publication {
     }
 
     @Column(name = "no_proposals", unique = false, nullable = false)
-    public Integer getNumberOfPublications() {
+    public Integer getNumberOfProposals() {
         return numberOfProposals;
     }
-    public void setNumberOfPublications(Integer numberOfProposals) {
+    public void setNumberOfProposals(Integer numberOfProposals) {
         this.numberOfProposals = numberOfProposals;
     }
 
-    @Id
-    @GeneratedValue(strategy = IDENTITY)
-    @Column(name = "publication_oid", unique = true, nullable = false)
-    public Integer getPublicationOid() {
-        return publicationOid;
-    }
-    public void setPublicationOid(Integer publicationOid) {
-        this.publicationOid = publicationOid;
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "publication")
+    public Set<PublicationProposal> getPublicationProposals() {
+        return publicationProposals;
     }
 
-    @ManyToMany(fetch = FetchType.EAGER, mappedBy = "publications")
-    public List<Proposal> getProposals() {
-        return proposals;
+    public void setPublicationProposals(Set<PublicationProposal> publicationProposals) {
+        this.publicationProposals = publicationProposals;
     }
 
-    public void setProposals(List<Proposal> proposals) {
-        this.proposals = proposals;
+    public void addPublicationProposal(PublicationProposal publicationProposal) {
+        this.publicationProposals.add(publicationProposal);
     }
 
     @Override
