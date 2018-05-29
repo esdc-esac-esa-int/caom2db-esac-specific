@@ -18,10 +18,7 @@
     
     <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>
     <property name="ads.url">https://api.adsabs.harvard.edu/v1/search/bigquery</property>
-    <property name="ads.params">bibcode,title,author,abstract,year,page,volume,bibstem</property>
-    
-    <property name="obs.update">update caom2_dev.proposal p set no_observations = (select count(*) from caom2.observation o where cast(o.proposal_id as integer) = p.proposal_id)</property>
-    
+        
     <property name="hibernate.default_schema">caom2_dev</property>
     
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication" />

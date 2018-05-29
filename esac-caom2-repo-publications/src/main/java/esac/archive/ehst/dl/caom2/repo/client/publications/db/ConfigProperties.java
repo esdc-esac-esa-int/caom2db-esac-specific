@@ -24,7 +24,6 @@ public class ConfigProperties {
     private String username;
     private String password;
     private String adsUrl;
-    private String adsParams;
     private String adsToken;
     private String resource;
     private Integer nThreads;
@@ -33,7 +32,7 @@ public class ConfigProperties {
     private String observationsUpdate;
 
     public void init(String connection, String driver, String database, String schema, String host, Integer port, String username, String password,
-            String adsUrl, String adsParams, String adsToken, String resource, Integer nThreads, SessionFactory factory, boolean isLocal, String obsUpdate) {
+            String adsUrl, String adsToken, String resource, Integer nThreads, SessionFactory factory, boolean isLocal, String obsUpdate) {
         this.setConnection(connection + ":" + port + "/" + database);
         this.setDriver(driver);
         this.setDatabase(database);
@@ -43,7 +42,6 @@ public class ConfigProperties {
         this.setUsername(username);
         this.setPassword(password);
         this.setAdsUrl(adsUrl);
-        this.setAdsParams(adsParams);
         this.setAdsToken(adsToken);
         this.setResource(resource);
         this.setnThreads(nThreads);
@@ -134,12 +132,6 @@ public class ConfigProperties {
     }
     public void setLocal(boolean isLocal) {
         this.isLocal = isLocal;
-    }
-    public String getAdsParams() {
-        return adsParams;
-    }
-    public void setAdsParams(String adsParams) {
-        this.adsParams = adsParams;
     }
     public String getObservationsUpdate() {
         return observationsUpdate;

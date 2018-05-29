@@ -44,7 +44,6 @@ public class ProposalWorker implements Callable<Proposal> {
 
         proposal.setNumPublications(bibcodes.size());
         proposal.setNumObservations(0);
-
         return proposal;
     }
 }

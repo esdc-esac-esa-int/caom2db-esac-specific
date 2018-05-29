@@ -3,9 +3,7 @@ package esac.archive.ehst.dl.caom2.repo.client.publications;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +16,6 @@ import org.hibernate.cfg.Configuration;
 import org.springframework.transaction.annotation.Transactional;
 
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.ConfigProperties;
-import esac.archive.ehst.dl.caom2.repo.client.publications.db.JdbcSingleton;
 import esac.archive.ehst.dl.caom2.repo.client.publications.db.UnableToCreatePorposalsTables;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal;
 import esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication;
@@ -38,32 +35,34 @@ public class Main {
         boolean correct = true;
         ArgumentMap am = new ArgumentMap(args);
         if (readConfig(am)) {
-            SessionFactory factory = ConfigProperties.getInstance().getFactory();
-            Session session = factory.openSession();
-            String resource = ConfigProperties.getInstance().getResource();
-            Integer threads = ConfigProperties.getInstance().getnThreads();
-            String adsUrl = ConfigProperties.getInstance().getAdsUrl();
-            String adsParams = ConfigProperties.getInstance().getAdsParams();
-            String adsToken = ConfigProperties.getInstance().getAdsToken();
-            List<Proposal> allProposals = Manager.readAllProposals(resource, threads);
-            List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
-            Map<String, Publication> allPublications = Manager.readAllPublications(allBibcodes, adsUrl, adsParams, adsToken);
-            allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
-            if (allProposals != null && allPublications != null) {
-                try {
-                    correct = Manager.tablesExist();
-                } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
-                    log.error("Error when checking existency of the tables or creating them: " + e.getMessage() + " caused by: " + e.getCause().toString());
-                    correct = false;
-                }
-                if (correct) {
-                    log.info("DB tables exist");
-                    List<Proposal> currentProposals = Manager.readCurrentProposals(session);
+            try {
+                correct = Manager.tablesExist();
+            } catch (SQLException | PropertyVetoException | UnableToCreatePorposalsTables e) {
+                log.error("Error when checking existency of the tables or creating them: " + e.getMessage() + " caused by: " + e.getCause().toString());
+                correct = false;
+            }
+            if (correct) {
+                log.info("DB tables exist");
+                SessionFactory factory = ConfigProperties.getInstance().getFactory();
+                Session session = factory.openSession();
+                String resource = ConfigProperties.getInstance().getResource();
+                Integer threads = ConfigProperties.getInstance().getnThreads();
+                String adsUrl = ConfigProperties.getInstance().getAdsUrl();
+                String adsToken = ConfigProperties.getInstance().getAdsToken();
+                List<Proposal> currentProposals = Manager.readCurrentProposals(session);
+                //                System.exit(1);
+                List<Proposal> allProposals = Manager.readAllProposals(resource, threads);
+                List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
+                Map<String, Publication> allPublications = Manager.readAllPublications(allBibcodes, adsUrl, adsToken);
+                allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
+                if (allProposals != null && allPublications != null) {
                     if (currentProposals != null) {
                         log.info("current proposals " + currentProposals.size());
                         log.info("all proposals     " + allProposals.size());
                         try {
+                            log.info("removing old proposals and publications");
                             Manager.removeOldProposals(session, currentProposals, allProposals);
+                            log.info("adding new proposals and publications");
                             Manager.addNewProposals(session, currentProposals, allProposals);
                         } catch (Exception ex) {
                             log.error(ex.getMessage());
@@ -74,39 +73,6 @@ public class Main {
             }
         }
 
-        if (correct) {
-            log.info("updating no_observations");
-            Connection con = null;
-            Statement stmt = null;
-            try {
-                con = JdbcSingleton.getInstance().getConnection();
-                stmt = con.createStatement();
-                if (stmt.execute(ConfigProperties.getInstance().getObservationsUpdate())) {
-                    log.info("no_observations updated correctly");
-                }
-            } catch (SQLException | PropertyVetoException e) {
-                e.printStackTrace();
-                correct = false;
-            } finally {
-                if (stmt != null) {
-                    try {
-                        stmt.close();
-                    } catch (SQLException e) {
-                        correct = false;
-                        e.printStackTrace();
-                    }
-                }
-                if (con != null) {
-                    try {
-                        con.close();
-                    } catch (SQLException e) {
-                        correct = false;
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-        }
         System.exit(0);
     }
 
@@ -170,8 +136,8 @@ public class Main {
 
         factory = configuration.buildSessionFactory();
 
-        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsParams, adsToken, resource,
-                nthreads, factory, isLocal, obsUpdate);
+        ConfigProperties.getInstance().init(connection, driver, database, schema, host, port, username, password, adsUrl, adsToken, resource, nthreads, factory,
+                isLocal, obsUpdate);
 
         log.info("config initiated");
         return correct;

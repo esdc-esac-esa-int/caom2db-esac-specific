@@ -50,6 +50,39 @@ import esac.archive.ehst.dl.caom2.repo.client.publications.entities.PublicationP
 public class Manager {
     private static final Logger log = Logger.getLogger(Manager.class);
 
+    public static void removeOldProposals(Session session, List<Proposal> currentProposals, List<Proposal> allProposals) throws Exception {
+        Transaction transaction = session.beginTransaction();
+        List<Proposal> auxProposals = new ArrayList<Proposal>();
+        try {
+            if (currentProposals.size() > 0) {
+                for (Object o : currentProposals) {
+                    Proposal p = (Proposal) o;
+                    if (!allProposals.contains(p)) {
+                        session.remove(p);
+                        for (PublicationProposal pp : p.getPublicationsProposals()) {
+                            session.remove(pp);
+                            Publication pub = pp.getPublication();
+                            pub.getPublicationProposals().remove(pp);
+                            if (pub.getPublicationProposals().isEmpty()) {
+                                session.remove(pub);
+                            }
+                        }
+                        auxProposals.add(p);
+                    }
+                }
+                for (Proposal p : auxProposals) {
+                    currentProposals.remove(p);
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Error removing old proposals: " + ex.getMessage());
+        } finally {
+            if (transaction != null) {
+                transaction.commit();
+            }
+        }
+    }
+
     public static void addNewProposals(Session session, List<Proposal> currentProposals, List<Proposal> allProposals) throws Exception {
         Transaction transaction = null;
         try {
@@ -59,13 +92,18 @@ public class Manager {
                 for (Object o : allProposals) {
                     Proposal p = (Proposal) o;
                     if (!currentProposals.contains(p)) {
+                        p.setNumObservations(calculateNumObservations(p));
                         session.saveOrUpdate(p);
                         log.info("proposal added " + p.getId() + " " + p.getPropId());
                         output.append("proposal added " + p.getId() + " " + p.getPropId() + "\n");
                         for (PublicationProposal pp : p.getPublicationsProposals()) {
-                            log.info("----> publication " + pp.getPublication().getPublicationOid() + " " + pp.getPublication().getBibcode());
-                            output.append("----> publication " + pp.getPublication().getPublicationOid() + " " + pp.getPublication().getBibcode() + "\n");
-                            session.saveOrUpdate(pp.getPublication());
+
+                            Publication pub = pp.getPublication();
+                            pub.setNumberOfObservations(pub.getNumberOfObservations() + p.getNumObservations());
+
+                            log.info("----> publication " + pub.getPublicationOid() + " " + pub.getBibcode());
+                            output.append("----> publication " + pub.getPublicationOid() + " " + pub.getBibcode() + "\n");
+                            session.saveOrUpdate(pub);
                             session.saveOrUpdate(pp);
                         }
                     }
@@ -85,64 +123,61 @@ public class Manager {
         }
     }
 
-    public static void removeOldProposals(Session session, List<Proposal> currentProposals, List<Proposal> allProposals) throws Exception {
-        Transaction transaction = session.beginTransaction();
-        List<Proposal> auxProposals = new ArrayList<Proposal>();
+    private static Integer calculateNumObservations(Proposal p) {
+        Integer numObs = 0;
+        //select count(*) from caom2.observation o where cast(o.proposal_id as integer) = p.proposal_id
+        log.info("updating no_observations for proposal " + p.getPropId());
+        Connection con = null;
+        Statement stmt = null;
+        ResultSet rs = null;
         try {
-            if (currentProposals.size() > 0) {
-                for (Object o : currentProposals) {
-                    Proposal p = (Proposal) o;
-                    if (!allProposals.contains(p)) {
-                        log.info("proposal removed " + p.getPropId());
-                        session.remove(p);
-                        auxProposals.add(p);
-                    }
-                }
-                for (Proposal p : auxProposals) {
-                    currentProposals.remove(p);
-                    for (PublicationProposal pp : p.getPublicationsProposals()) {
-                        if (pp.getPublication().getPublicationProposals().isEmpty()) {
-                            session.remove(pp.getPublication());
-                        }
-                    }
+            String sql = "select count(*) from ehst.mv_observation o where cast(o.proposal_id as integer) = " + p.getPropId();
+            con = JdbcSingleton.getInstance().getConnection();
+            stmt = con.createStatement();
+            rs = stmt.executeQuery(sql);
+            if (rs.next()) {
+                log.info("no_observations updated correctly for " + p.getPropId());
+                numObs = rs.getInt(1);
+            }
+        } catch (SQLException | PropertyVetoException e) {
+            e.printStackTrace();
+        } finally {
+            if (rs != null) {
+                try {
+                    rs.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
                 }
             }
-        } catch (Exception ex) {
-            log.error("Error removing old proposals: " + ex.getMessage());
-        } finally {
-            if (transaction != null) {
-                transaction.commit();
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
             }
         }
+        return numObs;
     }
 
     @SuppressWarnings("unchecked")
     public static List<Proposal> readCurrentProposals(Session session) {
-        boolean correct = true;
-        List<Proposal> currentProposals = null;
-        //        List<Publication> currentPublications = null;
-        try {
-            currentProposals = session.createQuery("from Proposal").list();
-            for (Object o : currentProposals) {
-                Proposal p = (Proposal) o;
-                for (PublicationProposal pp : p.getPublicationsProposals()) {
-                    Publication pub = pp.getPublication();
-                    if (pub != null) {
-                        p.addBibcodes(pub.getBibcode());
-                    }
-                }
-            }
+        List<Proposal> proposals = new ArrayList<Proposal>();
+        //        List<Proposal> currentProposalsWithPubs = new ArrayList<Proposal>();
+        //        List<Proposal> currentProposalsWithoutPubs = session.createQuery("from Proposal where no_publications = 0").list();
+        List<Proposal> currentProposals = session.createQuery("from Proposal").list();
 
-            log.info("number of proposals read from DB " + currentProposals.size());
-        } catch (Exception e) {
-            log.error("Error reading database: " + e.getMessage());
-            correct = false;
-        }
-        if (correct) {
-            return currentProposals;
-        } else {
-            return null;
-        }
+        proposals.addAll(currentProposals);
+
+        log.info("number of proposals read from DB " + proposals.size());
+        return proposals;
     }
 
     public static List<Proposal> readAllProposals(String resource, Integer nThreads) {
@@ -236,76 +271,7 @@ public class Manager {
         return newProposals;
     }
 
-    public static boolean tablesExist() throws SQLException, PropertyVetoException, UnableToCreatePorposalsTables {
-        boolean correct = true;
-        String queryProposals = "select exists (select 1 from information_schema.tables where table_schema = '" + ConfigProperties.getInstance().getSchema()
-                + "' and table_name = 'proposal')";
-        String queryPublications = "select exists (select 1 from information_schema.tables where table_schema = '" + ConfigProperties.getInstance().getSchema()
-                + "' and table_name = 'publication')";
-        String queryPropPub = "select exists (select 1 from information_schema.tables where table_schema = '" + ConfigProperties.getInstance().getSchema()
-                + "' and table_name = 'publication_proposal')";
-        //        log.debug("queryProposals = " + queryProposals);
-        //        log.debug("queryPublications = " + queryPublications);
-        //        log.debug("queryPropPub = " + queryPropPub);
-        Connection con = null;
-        Statement stmt = null;
-        ResultSet rs = null;
-        boolean existsProposals = false;
-        boolean existsPublications = false;
-        boolean existsPropPub = false;
-
-        try {
-            con = JdbcSingleton.getInstance().getConnection();
-            stmt = con.createStatement();
-            rs = stmt.executeQuery(queryProposals);
-            if (rs.next()) {
-                existsProposals = rs.getBoolean(1);
-            }
-            log.debug(ConfigProperties.getInstance().getSchema() + ".proposal exists = " + existsProposals);
-            rs.close();
-            if (existsProposals) {
-                rs = stmt.executeQuery(queryPublications);
-                if (rs.next()) {
-                    existsPublications = rs.getBoolean(1);
-                }
-                log.debug(ConfigProperties.getInstance().getSchema() + ".publication exists = " + existsPublications);
-                rs.close();
-                if (existsPublications) {
-                    rs = stmt.executeQuery(queryPropPub);
-                    if (rs.next()) {
-                        existsPropPub = rs.getBoolean(1);
-                    }
-                    log.debug(ConfigProperties.getInstance().getSchema() + ".publication_proposal exists = " + existsPropPub);
-                }
-            }
-
-        } catch (Exception ex) {
-            throw new UnableToCreatePorposalsTables("Unexpected exception when checking proposals and publications table exist: " + ex.getMessage());
-        } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
-            }
-        }
-        correct = existsProposals && existsPublications && existsPropPub;
-        return correct;
-    }
-
-    public static Map<String, Publication> readAllPublications(List<String> bibcodes, String adsUrl, String adsParams, String adsToken) {
+    public static Map<String, Publication> readAllPublications(List<String> bibcodes, String adsUrl, String adsToken) {
         Map<String, Publication> pubs = new HashMap<String, Publication>();
         List<Publication> processed = new ArrayList<Publication>();
         String result = null;
@@ -505,19 +471,97 @@ public class Manager {
             return null;
         }
         for (Proposal prop : allProposals) {
+            List<String> excludedBibcodes = new ArrayList<String>();
             for (String bibcode : prop.getBibcodes()) {
-                if (allPublications.containsKey(bibcode)) {
-                    PublicationProposal pp = new PublicationProposal();
-                    Publication pub = allPublications.get(bibcode);
-                    pp.setProposal(prop);
-                    pp.setPublication(pub);
-                    prop.addPublicationProposal(pp);
-                    pub.addPublicationProposal(pp);
-                    pub.setNumberOfProposals(pub.getNumberOfProposals() + 1);
+                if (!allPublications.containsKey(bibcode)) {
+                    excludedBibcodes.add(bibcode);
+                }
+            }
+            prop.getBibcodes().removeAll(excludedBibcodes);
+
+            for (String bibcode : prop.getBibcodes()) {
+                PublicationProposal pp = new PublicationProposal();
+                Publication pub = allPublications.get(bibcode);
+                pp.setProposal(prop);
+                pp.setPublication(pub);
+                prop.addPublicationProposal(pp);
+                pub.addPublicationProposal(pp);
+                pub.setNumberOfProposals(pub.getNumberOfProposals() + 1);
+                pub.setNumberOfObservations(pub.getNumberOfObservations() + prop.getNumObservations());
+                prop.setNumPublications(prop.getPublicationsProposals().size());
+            }
+        }
+
+        return allProposals;
+    }
+
+    public static boolean tablesExist() throws SQLException, PropertyVetoException, UnableToCreatePorposalsTables {
+        boolean correct = true;
+        String queryProposals = "select exists (select 1 from information_schema.tables where table_schema = '" + ConfigProperties.getInstance().getSchema()
+                + "' and table_name = 'proposal')";
+        String queryPublications = "select exists (select 1 from information_schema.tables where table_schema = '" + ConfigProperties.getInstance().getSchema()
+                + "' and table_name = 'publication')";
+        String queryPropPub = "select exists (select 1 from information_schema.tables where table_schema = '" + ConfigProperties.getInstance().getSchema()
+                + "' and table_name = 'publication_proposal')";
+        //        log.debug("queryProposals = " + queryProposals);
+        //        log.debug("queryPublications = " + queryPublications);
+        //        log.debug("queryPropPub = " + queryPropPub);
+        Connection con = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        boolean existsProposals = false;
+        boolean existsPublications = false;
+        boolean existsPropPub = false;
+
+        try {
+            con = JdbcSingleton.getInstance().getConnection();
+            stmt = con.createStatement();
+            rs = stmt.executeQuery(queryProposals);
+            if (rs.next()) {
+                existsProposals = rs.getBoolean(1);
+            }
+            log.debug(ConfigProperties.getInstance().getSchema() + ".proposal exists = " + existsProposals);
+            rs.close();
+            if (existsProposals) {
+                rs = stmt.executeQuery(queryPublications);
+                if (rs.next()) {
+                    existsPublications = rs.getBoolean(1);
+                }
+                log.debug(ConfigProperties.getInstance().getSchema() + ".publication exists = " + existsPublications);
+                rs.close();
+                if (existsPublications) {
+                    rs = stmt.executeQuery(queryPropPub);
+                    if (rs.next()) {
+                        existsPropPub = rs.getBoolean(1);
+                    }
+                    log.debug(ConfigProperties.getInstance().getSchema() + ".publication_proposal exists = " + existsPropPub);
+                }
+            }
+
+        } catch (Exception ex) {
+            throw new UnableToCreatePorposalsTables("Unexpected exception when checking proposals and publications table exist: " + ex.getMessage());
+        } finally {
+            if (rs != null) {
+                try {
+                    rs.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
                 }
             }
         }
-        return allProposals;
+        correct = existsProposals && existsPublications && existsPropPub;
+        return correct;
     }
 
     public static void fool(Session session) {
