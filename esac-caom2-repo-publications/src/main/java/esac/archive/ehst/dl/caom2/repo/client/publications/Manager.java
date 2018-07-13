@@ -58,7 +58,6 @@ public class Manager {
                 for (Object o : currentProposals) {
                     Proposal p = (Proposal) o;
                     if (!allProposals.contains(p)) {
-                        session.remove(p);
                         for (PublicationProposal pp : p.getPublicationsProposals()) {
                             session.remove(pp);
                             Publication pub = pp.getPublication();
@@ -67,6 +66,7 @@ public class Manager {
                                 session.remove(pub);
                             }
                         }
+                        session.remove(p);
                         auxProposals.add(p);
                     }
                 }

@@ -45,16 +45,19 @@ public class Main {
                 log.info("DB tables exist");
                 SessionFactory factory = ConfigProperties.getInstance().getFactory();
                 Session session = factory.openSession();
+
                 String resource = ConfigProperties.getInstance().getResource();
                 Integer threads = ConfigProperties.getInstance().getnThreads();
                 String adsUrl = ConfigProperties.getInstance().getAdsUrl();
                 String adsToken = ConfigProperties.getInstance().getAdsToken();
+
                 List<Proposal> currentProposals = Manager.readCurrentProposals(session);
-                //                System.exit(1);
                 List<Proposal> allProposals = Manager.readAllProposals(resource, threads);
                 List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
                 Map<String, Publication> allPublications = Manager.readAllPublications(allBibcodes, adsUrl, adsToken);
+
                 allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
+
                 if (allProposals != null && allPublications != null) {
                     if (currentProposals != null) {
                         log.info("current proposals " + currentProposals.size());
