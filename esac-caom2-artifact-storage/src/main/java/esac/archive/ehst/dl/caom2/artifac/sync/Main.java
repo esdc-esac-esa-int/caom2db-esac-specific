@@ -1,5 +1,6 @@
 package esac.archive.ehst.dl.caom2.artifac.sync;
 
+import ca.nrc.cadc.caom2.artifactsync.Caom2ArtifactSync;
 import ca.nrc.cadc.util.ArgumentMap;
 import ca.nrc.cadc.util.Log4jInit;
 
@@ -7,7 +8,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
-import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.JdbcSingleton;
 
 /**
  *
@@ -30,7 +30,13 @@ public class Main {
 
         String configFile = am.getValue("configFile");
         String dbPass = am.getValue("dbPass");
+        String collection = am.getValue("collection");
 
+        if (collection == null) {
+            log.error("missed --collection parameter");
+            usage();
+            System.exit(1);
+        }
         if (configFile == null) {
             log.error("missed --configFile parameter");
             usage();
@@ -41,41 +47,37 @@ public class Main {
             usage();
             System.exit(1);
         }
-        ConfigProperties.Init(configFile, dbPass);
+        ConfigProperties.Init(configFile, dbPass, collection);
 
         if (am.isSet("h") || am.isSet("help")) {
             usage();
             System.exit(0);
         }
 
-        String database = "--database=" + JdbcSingleton.getInstance().getDbhost() + "." + JdbcSingleton.getInstance().getDbname() + "."
-                + JdbcSingleton.getInstance().getDbschema();
-        String[] args2 = new String[args.length + 1];
-        int i = 0;
-        for (i = 0; i < args.length; i++) {
-            args2[i] = args[i];
-        }
-        args2[i] = database;
-
-        ca.nrc.cadc.caom2.artifactsync.Main.main(args2);
+        ca.nrc.cadc.caom2.artifactsync.Main.main(args);
     }
 
     private static void usage() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\n\nusage: esac-caom2-artifact-storage [-v|--verbose|-d|--debug] [-h|--help] ...");
-        sb.append("\n     --configFile=<path to configuration file>");
-        sb.append("\n     --dbPass=<password for database access>");
-        sb.append("\n     --artifactStore=<fully qualified class name>");
-        sb.append("\n     --collection=<collection> (currently ignored)");
-        sb.append("\n     --threads=<number of threads to be used to import artifacts (default: 1)>");
-        sb.append("\n\nOptional:");
-        sb.append("\n     --dryrun : check for work but don't do anything");
-        sb.append("\n     --batchsize=<integer> Max artifacts to check each iteration (default: 1000)");
-        sb.append("\n     --continue : repeat the batches until no work left");
-        sb.append("\n\nAuthentication:");
-        sb.append("\n     [--netrc|--cert=<pem file>]");
-        sb.append("\n     --netrc : read username and password(s) from ~/.netrc file");
-        sb.append("\n     --cert=<pem file> : read client certificate from PEM file");
+        sb.append("\n\nusage: ").append(Caom2ArtifactSync.getApplicationName()).append(" <mode> [mode-args] --artifactStore=<fully qualified class name>");
+        sb.append("\n      configFile=<path to configuration file>");
+        sb.append("\n      dbPass=<password for database access>");
+        sb.append("\n      collection=<collection>");
+        sb.append("\n\n    use '").append(Caom2ArtifactSync.getApplicationName()).append(" <mode> <-h|--help>' to get help on a <mode>");
+        sb.append("\n    where <mode> can be one of:");
+        sb.append("\n        discover: Incrementally harvest artifacts");
+        sb.append("\n        download: Download artifacts");
+        sb.append("\n        validate: Discover missing artifacts and update the HarvestSkipURI table");
+        sb.append("\n        diff: Discover and report missing artifacts");
+        sb.append("\n\n    optional general args:");
+        sb.append("\n        -v | --verbose");
+        sb.append("\n        -d | --debug");
+        sb.append("\n        -h | --help");
+        sb.append("\n        --profile : Profile task execution");
+        sb.append("\n\n    authentication:");
+        sb.append("\n        [--netrc|--cert=<pem file>]");
+        sb.append("\n        --netrc : read username and password(s) from ~/.netrc file");
+        sb.append("\n        --cert=<pem file> : read client certificate from PEM file");
 
         log.warn(sb.toString());
     }

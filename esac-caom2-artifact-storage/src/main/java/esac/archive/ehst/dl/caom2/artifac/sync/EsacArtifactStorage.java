@@ -1,6 +1,7 @@
 package esac.archive.ehst.dl.caom2.artifac.sync;
 
-import ca.nrc.cadc.caom2.artifactsync.ArtifactStore;
+import ca.nrc.cadc.caom2.artifact.ArtifactMetadata;
+import ca.nrc.cadc.caom2.artifact.ArtifactStore;
 import ca.nrc.cadc.net.TransientException;
 import ca.nrc.cadc.util.FileMetadata;
 
@@ -21,13 +22,19 @@ import java.nio.file.Paths;
 import java.security.AccessControlException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.log4j.Logger;
 
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacChecksumPersistance;
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.JdbcSingleton;
 
 /**
  * ESAC Implementation of the ArtifactStore interface.
@@ -84,6 +91,120 @@ public class EsacArtifactStorage implements ArtifactStore {
 
         log.info("Leaving contains method");
         return result;
+    }
+
+    @Override
+    public void store(URI artifactURI, InputStream data, FileMetadata metadata)
+            throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
+        log.info("Entering store method");
+        ByteArrayOutputStream baos = saveInputStream(data);
+
+        if (artifactURI == null || metadata == null || metadata.getMd5Sum() == null) {
+            log.error("Neither ArtifactURI nor FileMetadata can be null");
+            return;
+        }
+        if (baos == null) {
+            log.error("Was not possible to copy the InputStream");
+            return;
+        }
+        init();
+        URI checksum = null;
+        try {
+            checksum = new URI(metadata.getMd5Sum());
+        } catch (URISyntaxException e1) {
+            log.error("Unable to create URI from '" + metadata.getMd5Sum() + "'");
+            return;
+        }
+        if (checksum != null) {
+            try {
+                if (!contains(artifactURI, checksum)) {
+                    String md5 = calculateMD5Sum(new ByteArrayInputStream(baos.toByteArray()));
+                    String check = "md5:" + checksum.toString();
+                    log.info("CHECKSUM: calculated md5 for " + artifactURI + " = " + md5);
+                    log.info("CHECKSUM: received md5 for   " + artifactURI + " = " + check);
+                    if (!md5.equals(check)) {
+                        log.error("Mismatch between received checksum (" + check + ") and the calculated one (" + md5 + ").");
+                    } else if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
+                        EsacChecksumPersistance.getInstance().upsert(artifactURI, checksum);
+                    }
+                }
+            } catch (Exception e) {
+                log.error(e.getMessage());
+            } finally {
+                try {
+                    if (baos != null) {
+                        baos.close();
+                    }
+                    if (data != null) {
+                        data.close();
+                    }
+                } catch (IOException e) {
+                    log.error(e.getMessage());
+                }
+            }
+        }
+        log.info("Leaving store method");
+    }
+
+    @Override
+    public Set<ArtifactMetadata> list(String archive) throws TransientException, UnsupportedOperationException, AccessControlException {
+        log.info("Entering list method for archive = '" + archive + "'");
+        Set<ArtifactMetadata> artifactMetadataSet = new HashSet<ArtifactMetadata>();
+        String sql = "select distinct(a.artifact), a.checksum " + "from caom2.checksums a";
+        log.info(sql);
+        Connection con = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        try {
+            con = JdbcSingleton.getInstance().getConnection();
+            stmt = con.createStatement();
+            stmt.setFetchSize(1000);
+            rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                ArtifactMetadata am = new ArtifactMetadata();
+                am.artifactURI = rs.getString(1);
+                am.storageID = toStorageID(am.artifactURI);
+                am.checksum = rs.getString(2);
+                artifactMetadataSet.add(am);
+            }
+        } catch (SQLException | PropertyVetoException ex) {
+            log.error(ex.getMessage());
+            artifactMetadataSet.clear();
+        } finally {
+            if (rs != null) {
+                try {
+                    rs.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
+        log.info("Leaving list method with " + artifactMetadataSet.size() + " ArtifactMetadata objects in it");
+        return artifactMetadataSet;
+    }
+
+    @Override
+    public String toStorageID(String artifactURI) throws IllegalArgumentException {
+        log.info("Entering toStorageID method for artifactURI = '" + artifactURI + "'");
+        String storageLocation = null;
+        try {
+            storageLocation = parsePath(artifactURI);
+        } catch (NotValidInstrumentException e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
+        log.info("Leaving toStorageID method with storageId = '" + storageLocation + "'");
+        return storageLocation;
     }
 
     public static String getJ() {
@@ -286,60 +407,6 @@ public class EsacArtifactStorage implements ArtifactStore {
         }
         return hexString.toString();
 
-    }
-
-    @Override
-    public void store(URI artifactURI, InputStream data, FileMetadata metadata)
-            throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
-        log.info("Entering store method");
-        ByteArrayOutputStream baos = saveInputStream(data);
-
-        if (artifactURI == null || metadata == null || metadata.getMd5Sum() == null) {
-            log.error("Neither ArtifactURI nor FileMetadata can be null");
-            return;
-        }
-        if (baos == null) {
-            log.error("Was not possible to copy the InputStream");
-            return;
-        }
-        init();
-        URI checksum = null;
-        try {
-            checksum = new URI(metadata.getMd5Sum());
-        } catch (URISyntaxException e1) {
-            log.error("Unable to create URI from '" + metadata.getMd5Sum() + "'");
-            return;
-        }
-        try {
-            if (!contains(artifactURI, checksum)) {
-                if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
-                    String md5 = calculateMD5Sum(new ByteArrayInputStream(baos.toByteArray()));
-                    URI md5Uri = new URI(md5);
-                    String check = "md5:" + checksum.toString();
-                    log.info("CHECKSUM: calculated md5 for " + artifactURI + " = " + md5);
-                    log.info("CHECKSUM: expected md5 for   " + artifactURI + " = " + check);
-                    if (checksum == null || md5.equals(check)) {
-                        EsacChecksumPersistance.getInstance().upsert(artifactURI, md5Uri);
-                    } else {
-                        log.error("Mismatch between received checksum (" + check + ") and the calculeted one (" + md5 + ").");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error(e.getMessage());
-        } finally {
-            try {
-                if (baos != null) {
-                    baos.close();
-                }
-                if (data != null) {
-                    data.close();
-                }
-            } catch (IOException e) {
-                log.error(e.getMessage());
-            }
-        }
-        log.info("Leaving store method");
     }
 
     private ByteArrayOutputStream saveInputStream(InputStream data) {

@@ -1,7 +1,7 @@
 esac.tools.db.driver=org.postgresql.Driver
-esac.tools.db.dbhost=hstdev02
+esac.tools.db.dbhost=hst04
 esac.tools.db.dbport=8300
-esac.tools.db.dbname=ehst_dev_3
+esac.tools.db.dbname=ehst
 esac.tools.db.dbschema=caom2
 esac.tools.db.username=postgres
 
