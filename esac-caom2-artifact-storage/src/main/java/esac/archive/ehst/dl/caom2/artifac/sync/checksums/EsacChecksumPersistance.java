@@ -107,15 +107,16 @@ public class EsacChecksumPersistance {
         boolean result = false;
         String upsert = null;
         if (md5 != null) {
+            String md5md5 = "md5:" + md5.toString();
             upsert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " (" + getChecksumArtifactColumnName() + ", "
-                    + getChecksumChecksumColumnName() + ") " + " values ('" + artifactURI.toString() + "', '" + md5.toString() + "') on conflict ("
-                    + getChecksumArtifactColumnName() + ") do update set " + getChecksumChecksumColumnName() + " = '" + md5.toString() + "';";
+                    + getChecksumChecksumColumnName() + ") " + " values ('" + artifactURI.toString() + "', '" + md5md5.toString() + "') on conflict ("
+                    + getChecksumArtifactColumnName() + ") do update set " + getChecksumChecksumColumnName() + " = '" + md5md5.toString() + "';";
         } else {
             upsert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " (" + getChecksumArtifactColumnName() + ", "
                     + getChecksumChecksumColumnName() + ") " + " values ('" + artifactURI.toString() + "', NULL) on conflict ("
                     + getChecksumArtifactColumnName() + ") do update set " + getChecksumChecksumColumnName() + " = NULL;";
         }
-        log.debug("****** insert statement = " + upsert);
+        log.info("upsert query = " + upsert);
 
         Connection con = null;
         Statement stmt = null;
@@ -191,8 +192,13 @@ public class EsacChecksumPersistance {
     public boolean select(URI artifactURI, URI checksum) {
         boolean result = false;
         Statement stmt = null;
+        String md5Checksum = checksum.toString();
+        if (!md5Checksum.startsWith("md5:")) {
+            md5Checksum = "md5:" + checksum.toString();
+        }
         String query = "select * from " + getChecksumSchema() + "." + getChecksumTable() + " where " + getChecksumArtifactColumnName() + " = '"
-                + artifactURI.toString() + "' and " + getChecksumChecksumColumnName() + " = '" + checksum.toString() + "'";
+                + artifactURI.toString() + "' and " + getChecksumChecksumColumnName() + " = '" + md5Checksum.toString() + "'";
+        log.info("select query = " + query);
         ResultSet rs = null;
 
         Connection con = null;

@@ -89,7 +89,7 @@ public class EsacArtifactStorage implements ArtifactStore {
             result = EsacChecksumPersistance.getInstance().select(artifactURI, checksum);
         }
 
-        log.info("Leaving contains method");
+        log.info("Leaving contains method for artifact: " + artifactURI.toString() + " = " + result);
         return result;
     }
 
@@ -125,6 +125,7 @@ public class EsacArtifactStorage implements ArtifactStore {
                     if (!md5.equals(check)) {
                         log.error("Mismatch between received checksum (" + check + ") and the calculated one (" + md5 + ").");
                     } else if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
+                        log.info("Saving " + artifactURI + " = " + check + " in the database");
                         EsacChecksumPersistance.getInstance().upsert(artifactURI, checksum);
                     }
                 }
