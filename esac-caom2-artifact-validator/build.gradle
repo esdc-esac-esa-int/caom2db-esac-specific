@@ -11,13 +11,13 @@ repositories {
     mavenLocal()
 }
 
-sourceCompatibility = 1.7
+sourceCompatibility = 1.8
 
 group = 'esac.archive'
 
 version = '1.0.0'
 
-mainClassName = 'esac.archive.ehst.dl.caom2.artifac.validator.Main'
+mainClassName = 'esac.archive.ehst.dl.caom2.artifact.validator.Main'
 
 dependencies {
     compile 'log4j:log4j:1.2.+'

@@ -17,7 +17,6 @@ public class ConfigProperties {
     private static boolean initialized = false;
     private static Properties prop;
     private static String dbPass = "";
-    private static String collection = null;
     private static String pathToConfigFile = "";
     private static String rootPath = "";
 
@@ -37,12 +36,11 @@ public class ConfigProperties {
         return instance;
     }
 
-    public static void Init(String path, String pass, String c, String r) {
+    public static void Init(String path, String pass, String r) {
         log.info("Creating properties file");
         prop = new Properties();
         dbPass = pass;
         pathToConfigFile = path;
-        collection = c;
         initialized = true;
         rootPath = r;
     }
@@ -80,21 +78,6 @@ public class ConfigProperties {
 
     public String getDbPass() {
         return dbPass;
-    }
-
-    /**
-     * @return the collection
-     */
-    public static String getCollection() {
-        return collection;
-    }
-
-    /**
-     * @param collection
-     *            the collection to set
-     */
-    public static void setCollection(String collection) {
-        ConfigProperties.collection = collection;
     }
 
     /**

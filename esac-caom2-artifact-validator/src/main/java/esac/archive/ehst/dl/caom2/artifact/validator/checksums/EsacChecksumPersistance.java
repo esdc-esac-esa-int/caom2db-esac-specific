@@ -107,7 +107,10 @@ public class EsacChecksumPersistance {
         boolean result = false;
         String upsert = null;
         if (md5 != null) {
-            String md5md5 = "md5:" + md5.toString();
+            String md5md5 = md5.toString();
+            if (!md5md5.toString().startsWith("md5:")) {
+                md5md5 = "md5:" + md5.toString();
+            }
             upsert = "insert into " + getChecksumSchema() + "." + getChecksumTable() + " (" + getChecksumArtifactColumnName() + ", "
                     + getChecksumChecksumColumnName() + ") " + " values ('" + artifactURI.toString() + "', '" + md5md5.toString() + "') on conflict ("
                     + getChecksumArtifactColumnName() + ") do update set " + getChecksumChecksumColumnName() + " = '" + md5md5.toString() + "';";
