@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+    id 'maven'
+    id 'maven-publish'
+    id 'com.jfrog.bintray' version '1.7.1'
+    id 'application'
+}
+
+repositories {
+    jcenter()
+    mavenLocal()
+}
+
+sourceCompatibility = 1.7
+
+group = 'esac.archive'
+
+version = '1.0.0'
+
+mainClassName = 'esac.archive.ehst.dl.caom2.artifac.validator.Main'
+
+dependencies {
+    compile 'log4j:log4j:1.2.+'
+    compile 'org.jdom:jdom2:2.+'
+    compile 'org.springframework:spring-jdbc:2.5.6.SEC01'
+    compile 'org.postgresql:postgresql:9.4.1209.jre7'
+    compile 'com.mchange:c3p0:0.9.5.2'
+    
+    compile 'org.opencadc:cadc-registry:[1.2.2,)'
+    compile 'org.opencadc:caom2:[2.3.9,)'
+    compile 'org.opencadc:caom2persistence:[2.3.17,)'
+    compile 'org.opencadc:caom2-artifact-sync:[2.3.15,)'
+    
+    compile 'commons-io:commons-io:[2.6,)'
+
+    runtime 'net.sourceforge.jtds:jtds:1.+'
+    
+    testCompile 'junit:junit:4.+'
+}
