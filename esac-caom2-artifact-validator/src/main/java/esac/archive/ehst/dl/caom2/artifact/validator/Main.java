@@ -6,9 +6,9 @@ import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -112,7 +112,9 @@ public class Main {
         log.info("Validating file in '" + file.getAbsolutePath() + "'");
         String artifact = "mast:HST/product/" + file.getName();
         URI artifactUri = new URI(artifact);
-        String calculatedChecksum = EsacArtifactStorage.calculateMD5Sum(new FileInputStream(file));
+        InputStream input = EsacArtifactStorage.decompress(file);
+        String calculatedChecksum = EsacArtifactStorage.calculateMD5Sum(input);
+        input.close();
         URI calculatedChecksumUri = new URI(calculatedChecksum);
         boolean checksumExists = true;
         //synchronized (EsacChecksumPersistance.getInstance())
@@ -123,10 +125,7 @@ public class Main {
                 boolean artifactExists = EsacChecksumPersistance.getInstance().select(artifactUri);
                 if (artifactExists) {
                     log.info("artifact does exist for '" + artifactUri + "'");
-                    log.info("DELETING ENTRY FOR '" + artifactUri + "'");
-                    //EsacChecksumPersistance.getInstance().delete(new URI(artifactUri));
-                } else {
-                    log.info("adding checksum info for  '" + artifactUri.toString() + "' and '" + calculatedChecksumUri.toString());
+                    log.info("modifiying checksum info for  '" + artifactUri.toString() + "' and '" + calculatedChecksumUri.toString());
                     EsacChecksumPersistance.getInstance().upsert(artifactUri, calculatedChecksumUri);
                 }
             }

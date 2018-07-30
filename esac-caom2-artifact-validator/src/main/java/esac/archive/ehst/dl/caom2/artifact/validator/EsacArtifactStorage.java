@@ -9,6 +9,7 @@ import java.beans.PropertyVetoException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.log4j.Logger;
@@ -435,5 +437,38 @@ public class EsacArtifactStorage implements ArtifactStore {
             }
         }
         return baos;
+    }
+
+    public static InputStream decompress(File f) throws IOException {
+        boolean toBeDecompressed = f.getName().endsWith(".gz");
+        InputStream fis = new FileInputStream(f);
+        if (!toBeDecompressed) {
+            return fis;
+        } else {
+            GZIPInputStream gzis = null;
+            ByteArrayOutputStream baos = null;
+            ByteArrayInputStream bais = null;
+            try {
+                gzis = new GZIPInputStream(fis);
+                int length;
+                byte[] buffer = new byte[1024];
+                baos = new ByteArrayOutputStream();
+                while ((length = gzis.read(buffer)) > 0) {
+                    baos.write(buffer, 0, length);
+                }
+
+                bais = new ByteArrayInputStream(baos.toByteArray());
+            } catch (IOException ex) {
+                log.error(ex.getMessage());
+            } finally {
+                if (baos != null) {
+                    baos.close();
+                }
+                if (gzis != null) {
+                    gzis.close();
+                }
+            }
+            return bais;
+        }
     }
 }
