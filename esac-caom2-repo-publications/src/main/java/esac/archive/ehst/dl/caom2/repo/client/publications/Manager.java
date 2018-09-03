@@ -291,11 +291,16 @@ public class Manager {
         }
         int size = currentBibcodes.size();
         boolean first = true;
-        for (String b : currentBibcodes) {
-            bibs += "\n" + b;
-            accumulated++;
-            if (accumulated == max || accumulated == size) { // ADS big API limited to 2000 bibcodes per batch
-                try {
+        try {
+
+            for (String b : currentBibcodes) {
+                //                if (b.equals("2011ApJS..197...36K")) {
+                //                    int i = 0;
+                //                }
+
+                bibs += "\n" + b;
+                accumulated++;
+                if (accumulated == max || accumulated == size) { // ADS big API limited to 2000 bibcodes per batch
                     if (first) {
                         first = false;
                         adsUrl += "?";
@@ -316,58 +321,76 @@ public class Manager {
 
                         adsUrl += postData;
                     }
-                    readUrl = new URL(adsUrl);
-                    connection = (HttpsURLConnection) readUrl.openConnection();
-
-                    connection.setRequestMethod("POST");
-                    connection.setRequestProperty("Authorization", "Bearer " + adsToken);
-                    connection.setRequestProperty("User-Agent", "Java client");
-                    connection.setRequestProperty("Content-Type", "big-query/csv");
-
-                    connection.setDoOutput(true);
-                    try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
-                        wr.writeBytes(bibs);
+                    processed = createPublications(adsUrl, adsToken, bibs, connection);
+                    if (pubs == null) {
+                        break;
                     }
-
-                    in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    result = in.readLine();
-                    //                    try (BufferedWriter bw = new BufferedWriter(new FileWriter("test.json"))) {
-                    //                        bw.write(result);
-                    //                    } catch (IOException e) {
-                    //                        throw e;
-                    //                    }
-                    processed = processPublications(result);
-                } catch (Exception e) {
-                    String exceptionMesssage = e.getMessage();
-                    log.error(exceptionMesssage);
-                    pubs = null;
-                } finally {
-                    result = null;
-                    if (in != null) {
-                        try {
-                            in.close();
-                        } catch (IOException e) {
+                    if (processed != null && processed.size() > 0) {
+                        for (Publication pub : processed) {
+                            pubs.put(pub.getBibcode(), pub);
                         }
-                    }
-                    if (connection != null) {
-                        connection.disconnect();
                     }
                     bibs = "bibcode";
                     accumulated = 0;
-                }
-                if (pubs == null) {
-                    break;
-                }
-                if (processed != null && processed.size() > 0) {
-                    for (Publication pub : processed) {
-                        pubs.put(pub.getBibcode(), pub);
+                    if (connection != null) {
+                        connection.disconnect();
                     }
-                }
 
+                }
+            }
+            processed.clear();
+            if ((accumulated != max && accumulated != size)) {
+                processed = createPublications(adsUrl, adsToken, bibs, connection);
+            }
+            if (processed != null && processed.size() > 0) {
+                for (Publication pub : processed) {
+                    pubs.put(pub.getBibcode(), pub);
+                }
+            }
+
+        } catch (Exception e) {
+            String exceptionMesssage = e.getMessage();
+            log.error(exceptionMesssage);
+            pubs = null;
+        } finally {
+            result = null;
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                }
+            }
+            if (connection != null) {
+                connection.disconnect();
             }
         }
+
         currentBibcodes.clear();
         return pubs;
+    }
+
+    private static List<Publication> createPublications(String adsUrl, String adsToken, String bibs, HttpsURLConnection connection) throws IOException {
+        URL readUrl = new URL(adsUrl);
+        connection = (HttpsURLConnection) readUrl.openConnection();
+
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Authorization", "Bearer " + adsToken);
+        connection.setRequestProperty("User-Agent", "Java client");
+        connection.setRequestProperty("Content-Type", "big-query/csv");
+
+        connection.setDoOutput(true);
+        try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
+            wr.writeBytes(bibs);
+        }
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        String result = in.readLine();
+        //                    try (BufferedWriter bw = new BufferedWriter(new FileWriter("test.json"))) {
+        //                        bw.write(result);
+        //                    } catch (IOException e) {
+        //                        throw e;
+        //                    }
+        return processPublications(result);
     }
 
     private static List<Publication> processPublications(String result) {
