@@ -23,6 +23,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import esac.archive.ehst.dl.caom2.artifact.validator.checksums.EsacChecksumPersistance;
+import esac.archive.ehst.dl.caom2.artifact.validator.checksums.EsacResultsPersistance;
 import esac.archive.ehst.dl.caom2.artifact.validator.checksums.db.ConfigProperties;
 
 /**
@@ -92,6 +93,8 @@ public class Main {
 
         //        Collection<File> files = FileUtils.listFiles(new File(ConfigProperties.getRootPath()), new WildcardFileFilter("*", IOCase.INSENSITIVE),
         //                new NotFileFilter(DirectoryFileFilter.DIRECTORY));
+        EsacResultsPersistance.getInstance();
+
         log.info("Validating " + files.size() + " files in '" + ConfigProperties.getRootPath() + "'");
         files.parallelStream().forEach(file -> {
             try {
@@ -111,24 +114,24 @@ public class Main {
             PropertyVetoException, UnsupportedOperationException, NoSuchAlgorithmException, FileNotFoundException, IOException, URISyntaxException {
         log.info("Validating file in '" + file.getAbsolutePath() + "'");
         String artifact = "mast:HST/product/" + file.getName();
+        if (artifact.endsWith(".gz")) {
+            artifact = artifact.replace(".gz", "");
+        }
         URI artifactUri = new URI(artifact);
         InputStream input = EsacArtifactStorage.decompress(file);
         String calculatedChecksum = EsacArtifactStorage.calculateMD5Sum(input);
         input.close();
         URI calculatedChecksumUri = new URI(calculatedChecksum);
         boolean checksumExists = true;
-        //synchronized (EsacChecksumPersistance.getInstance())
-        {
-            checksumExists = EsacChecksumPersistance.getInstance().select(artifactUri, calculatedChecksumUri);
-            if (!checksumExists) {
-                log.info("checksum (" + calculatedChecksum + ") doesn't exist for '" + artifactUri + "'");
-                boolean artifactExists = EsacChecksumPersistance.getInstance().select(artifactUri);
-                if (artifactExists) {
-                    log.info("artifact does exist for '" + artifactUri + "'");
-                    log.info("modifiying checksum info for  '" + artifactUri.toString() + "' and '" + calculatedChecksumUri.toString());
-                    EsacChecksumPersistance.getInstance().upsert(artifactUri, calculatedChecksumUri);
-                }
-            }
+        checksumExists = EsacChecksumPersistance.getInstance().select(artifactUri, calculatedChecksumUri);
+        if (!checksumExists) {
+            log.info("checksum (" + calculatedChecksum + ") doesn't exist for '" + artifactUri + "'");
+            String expectedChecksum = EsacChecksumPersistance.getInstance().select(artifactUri);
+            URI expectedChecksumUri = expectedChecksum == null ? null : new URI(expectedChecksum);
+            EsacResultsPersistance.getInstance().upsert(artifactUri, expectedChecksumUri, calculatedChecksumUri);
+            //                if (modify) {
+            //                    EsacChecksumPersistance.getInstance().upsert(artifactUri, calculatedChecksumUri);
+            //                }
         }
         return checksumExists;
     }

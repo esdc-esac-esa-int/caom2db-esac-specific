@@ -471,4 +471,8 @@ public class EsacArtifactStorage implements ArtifactStore {
             return bais;
         }
     }
+
+    @Override
+    public void processResults(long arg0, long arg1, long arg2, long arg3, int arg4) {
+    }
 }

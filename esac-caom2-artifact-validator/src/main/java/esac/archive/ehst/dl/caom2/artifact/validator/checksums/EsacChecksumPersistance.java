@@ -151,9 +151,9 @@ public class EsacChecksumPersistance {
         return result;
     }
 
-    public boolean select(URI artifactURI) {
-        boolean result = false;
+    public String select(URI artifactURI) {
         Statement stmt = null;
+        String r = null;
         String query = "select * from " + getChecksumSchema() + "." + getChecksumTable() + " where " + getChecksumArtifactColumnName() + " = '"
                 + artifactURI.toString() + "';";
         ResultSet rs = null;
@@ -163,10 +163,11 @@ public class EsacChecksumPersistance {
             con = JdbcSingleton.getInstance().getConnection();
             stmt = con.createStatement();
             rs = stmt.executeQuery(query);
-            result = rs.next();
+            rs.next();
+            r = rs.getString(2);
         } catch (Exception ex) {
             log.error("Unexpected exception when selecting: " + ex.getMessage());
-            result = false;
+            r = null;
         } finally {
             if (rs != null) {
                 try {
@@ -186,10 +187,8 @@ public class EsacChecksumPersistance {
                 } catch (SQLException e) {
                 }
             }
-
         }
-        return result;
-
+        return r;
     }
 
     public boolean select(URI artifactURI, URI checksum) {
