@@ -72,8 +72,14 @@ public class Main {
                 System.exit(1);
         	}
         }
-
-        NetworkPerformanceResult r = EsacResultsPersistance.getInstance().select(startDate, endDate);
+        NetworkPerformanceResult r = null;
+        try {
+        	r = EsacResultsPersistance.getInstance().select(startDate, endDate);
+        }catch(IllegalArgumentException e) {
+        	log.error(e.getMessage());
+            usage();
+            System.exit(1);
+        }
         System.out.println(r);
     }
 
@@ -83,8 +89,8 @@ public class Main {
         sb.append("\n      configFile=<path to configuration file>");
         sb.append("\n      dbPass=<password for database access>");
         sb.append("\nOPTIONAL");
-        sb.append("\n      startDate=start date (format = 'yyyy/MM/dd HH:mm:SS\'");
-        sb.append("\n      endDate=end date (format = 'yyyy/MM/dd HH:mm:SS'");
+        sb.append("\n      startDate=start date (format = 'yyyy/MM/dd HH:mm:ss'");
+        sb.append("\n      endDate=end date (format = 'yyyy/MM/dd HH:mm:ss'");
 
         log.warn(sb.toString());
     }
