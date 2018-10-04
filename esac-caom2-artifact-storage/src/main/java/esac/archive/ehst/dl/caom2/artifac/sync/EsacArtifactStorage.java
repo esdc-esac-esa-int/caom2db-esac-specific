@@ -26,6 +26,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DateFormat;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.GZIPOutputStream;
@@ -33,6 +37,7 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.log4j.Logger;
 
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacChecksumPersistance;
+import esac.archive.ehst.dl.caom2.artifac.sync.checksums.EsacResultsPersistance;
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.ConfigProperties;
 import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.JdbcSingleton;
 
@@ -46,6 +51,9 @@ import esac.archive.ehst.dl.caom2.artifac.sync.checksums.db.JdbcSingleton;
 public class EsacArtifactStorage implements ArtifactStore {
 
     private static final Logger log = Logger.getLogger(EsacArtifactStorage.class.getName());
+
+    DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    private static DecimalFormat decimalFormat = new DecimalFormat(".##");
 
     protected static String J_FILES_LOCATION = null;
     protected static String L_FILES_LOCATION = null;
@@ -61,7 +69,8 @@ public class EsacArtifactStorage implements ArtifactStore {
     protected static String F_FILES_LOCATION = null;
 
     public EsacArtifactStorage() throws IllegalArgumentException, SecurityException, IllegalAccessException, InvocationTargetException, NoSuchMethodException,
-            SQLException, PropertyVetoException {
+            SQLException, PropertyVetoException, NullPointerException {
+
         J_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.j");
         L_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.l");
         X_FILES_LOCATION = ConfigProperties.getInstance().getProperty("caom2.artifactsync.repository.hst.x");
@@ -430,5 +439,42 @@ public class EsacArtifactStorage implements ArtifactStore {
             }
         }
         return baos;
+    }
+
+    @Override
+    public void processResults(long total, long successes, long totalElapsedTime, long totalBytes, int threads) {
+        String date = dateFormat.format(new Date());
+        synchronized (date) {
+            try {
+                String message = null;
+                double figure = 0;
+                String units = null;
+                if (total > 0) {
+                    if (successes > 0) {
+                        figure = (totalBytes / ((totalElapsedTime / 1000) * threads));
+                        if (figure >= 1048576.0) { //MB
+                            figure = figure / 1048576.0;
+                            units = "MB/second per thread";
+                            //message += " -> '" + decimalFormat.format(figure) + "' MB/second per thread. " + successes + " files downloaded out of " + total;
+                        } else if (figure >= 1024.0) { // KB
+                            figure = figure / 1024.0;
+                            units = "KB/second per thread";
+                            //message += " -> '" + decimalFormat.format(figure) + "' KB/second per thread. " + successes + " files downloaded out of " + total;
+                        } else {
+                            units = "B/second per thread";
+                            //message += " -> '" + decimalFormat.format(figure) + "'  B/second per thread. " + successes + " files downloaded out of " + total;
+                        }
+                    } else {
+                        message = "None of the " + total + " artifacts was able to be downloaded";
+                    }
+                } else {
+                    message = "No artifacts to be download";
+                }
+                EsacResultsPersistance.getInstance().insert(date, total, successes, totalElapsedTime, totalBytes, threads,
+                        Float.parseFloat(decimalFormat.format(figure)), units, message);
+            } catch (Exception e) {
+                log.error(e.getMessage());
+            }
+        }
     }
 }
