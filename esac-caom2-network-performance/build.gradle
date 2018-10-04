@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    id 'maven'
+    id 'maven-publish'
+    id 'com.jfrog.bintray' version '1.7.1'
+    id 'application'
+}
+
+repositories {
+    jcenter()
+    mavenLocal()
+}
+
+sourceCompatibility = 1.8
+
+group = 'esac.archive'
+
+version = '1.0.0'
+
+mainClassName = 'esac.archive.ehst.dl.caom2.network.performance.Main'
+
+dependencies {
+    compile 'log4j:log4j:1.2.+'
+    compile 'org.jdom:jdom2:2.+'
+    compile 'org.springframework:spring-jdbc:2.5.6.SEC01'
+    compile 'org.postgresql:postgresql:9.4.1209.jre7'
+    compile 'com.mchange:c3p0:0.9.5.2'
+
+    runtime 'net.sourceforge.jtds:jtds:1.+'
+    
+    testCompile 'junit:junit:4.+'
+}

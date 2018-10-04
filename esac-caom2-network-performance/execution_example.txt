@@ -1,0 +1,1 @@
+./esac-caom2-network-performance-1.0.0/bin/esac-caom2-network-performance --configFile=config.properties --dbPass=eh2t_r00t --startDate="2018/09/07 10:20:31"
