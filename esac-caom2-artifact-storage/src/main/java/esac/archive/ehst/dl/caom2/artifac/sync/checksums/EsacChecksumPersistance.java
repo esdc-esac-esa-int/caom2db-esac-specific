@@ -99,7 +99,7 @@ public class EsacChecksumPersistance {
         }
     }
 
-    public boolean upsert(URI artifactURI, URI md5) {
+    public boolean upsert(URI artifactURI, URI md5) throws SQLException {
         log.debug("****** upsert of duple ('" + artifactURI + "', " + md5 + "')");
 
         // INSERT INTO tablename (a, b, c) values (1, 2, 10) ON CONFLICT (a) DO
@@ -126,29 +126,24 @@ public class EsacChecksumPersistance {
             int res = stmt.executeUpdate(upsert);
             if (res != 1) {
                 log.error("Unexpected exception inserting artifact: " + artifactURI.toString());
-                result = false;
+                throw new Exception("Unexpected exception inserting artifact: " + artifactURI.toString());
             }
         } catch (Exception ex) {
-            log.error("Unexpected exception when inserting: " + ex.getMessage());
-            result = false;
+            log.error(ex.getMessage());
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
             if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
+            	stmt.close();
             }
             if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
+                con.close();
             }
         }
         return result;
     }
 
-    public boolean select(URI artifactURI) {
+    public boolean select(URI artifactURI) throws SQLException {
         boolean result = false;
         Statement stmt = null;
         String query = "select * from " + getChecksumSchema() + "." + getChecksumTable() + " where " + getChecksumArtifactColumnName() + " = '"
@@ -163,33 +158,24 @@ public class EsacChecksumPersistance {
             result = rs.next();
         } catch (Exception ex) {
             log.error("Unexpected exception when selecting: " + ex.getMessage());
-            result = false;
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
             if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
+            	rs.close();
             }
             if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
+                stmt.close();
             }
             if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
+                con.close();
             }
-
         }
         return result;
 
     }
 
-    public boolean select(URI artifactURI, URI checksum) {
+    public boolean select(URI artifactURI, URI checksum) throws SQLException {
         boolean result = false;
         Statement stmt = null;
         String md5Checksum = checksum.toString();
@@ -209,25 +195,17 @@ public class EsacChecksumPersistance {
             result = rs.next();
         } catch (Exception ex) {
             log.error("Unexpected exception when selecting: " + ex.getMessage());
-            result = false;
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
             if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
+                rs.close();
             }
             if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
+                stmt.close();
             }
             if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
+                con.close();
             }
         }
         return result;
@@ -253,25 +231,17 @@ public class EsacChecksumPersistance {
 
         } catch (Exception ex) {
             log.error("Unexpected exception when selecting: " + ex.getMessage());
-            exists = false;
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
             if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
+               rs.close();
             }
             if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
+                stmt.close();
             }
             if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
+                con.close();
             }
         }
         return exists;

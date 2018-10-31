@@ -121,7 +121,7 @@ public class EsacResultsPersistance {
     }
 
     public boolean insert(String date, long totalFiles, long successFiles, long elapsedTime, long bytes, long threads, float performance, String units,
-            String message) {
+            String message) throws SQLException {
         log.debug("****** upsert of row ('" + date + "')");
 
         // INSERT INTO tablename (a, b, c) values (1, 2, 10) ON CONFLICT (a) DO
@@ -146,23 +146,18 @@ public class EsacResultsPersistance {
             int res = stmt.executeUpdate(insert);
             if (res != 1) {
                 log.error("Unexpected exception inserting date: " + date);
-                result = false;
+                throw new Exception("Unexpected exception inserting date: " + date);
             }
         } catch (Exception ex) {
-            log.error("Unexpected exception when inserting: " + ex.getMessage());
-            result = false;
+            log.error(ex.getMessage());
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
             if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
+            	stmt.close();
             }
             if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
+            	con.close();
             }
         }
         return result;
@@ -187,7 +182,8 @@ public class EsacResultsPersistance {
 
         } catch (Exception ex) {
             log.error("Unexpected exception when selecting: " + ex.getMessage());
-            exists = false;
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
             if (rs != null) {
                 try {
@@ -196,16 +192,10 @@ public class EsacResultsPersistance {
                 }
             }
             if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
+            	stmt.close();
             }
             if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
+            	con.close();
             }
         }
         return exists;

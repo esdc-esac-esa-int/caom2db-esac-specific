@@ -87,7 +87,7 @@ public class EsacArtifactStorage implements ArtifactStore {
 
     @Override
     public boolean contains(URI artifactURI, URI checksum) throws TransientException {
-        log.info("Entering contains method");
+        log.info("******************** Entering contains method");
         if (artifactURI == null) {
             log.error("Artifact URI is null");
             return false;
@@ -95,17 +95,22 @@ public class EsacArtifactStorage implements ArtifactStore {
         init();
         boolean result = false;
         if (checksum != null) {
-            result = EsacChecksumPersistance.getInstance().select(artifactURI, checksum);
+            try {
+				result = EsacChecksumPersistance.getInstance().select(artifactURI, checksum);
+			} catch (SQLException e) {
+	            e.printStackTrace();
+	            System.exit(2);
+			}
         }
 
-        log.info("Leaving contains method for artifact: " + artifactURI.toString() + " = " + result);
+        log.info("******************** Leaving contains method for artifact: " + artifactURI.toString() + " = " + result);
         return result;
     }
 
     @Override
     public void store(URI artifactURI, InputStream data, FileMetadata metadata)
             throws TransientException, UnsupportedOperationException, IllegalArgumentException, AccessControlException, IllegalStateException {
-        log.info("Entering store method");
+        log.info("******************** Entering store method");
         ByteArrayOutputStream baos = saveInputStream(data);
 
         if (artifactURI == null || metadata == null || metadata.getMd5Sum() == null) {
@@ -125,23 +130,30 @@ public class EsacArtifactStorage implements ArtifactStore {
             return;
         }
         if (checksum != null) {
+        	ByteArrayInputStream copy = null;
             try {
                 if (!contains(artifactURI, checksum)) {
-                    String md5 = calculateMD5Sum(new ByteArrayInputStream(baos.toByteArray()));
+                	copy = new ByteArrayInputStream(baos.toByteArray());
+                    String md5 = calculateMD5Sum(copy);
                     String check = "md5:" + checksum.toString();
-                    log.info("CHECKSUM: calculated md5 for " + artifactURI + " = " + md5);
-                    log.info("CHECKSUM: received md5 for   " + artifactURI + " = " + check);
+                    log.info("******************** CHECKSUM: calculated md5 for " + artifactURI + " = " + md5);
+                    log.info("******************** CHECKSUM: received md5 for   " + artifactURI + " = " + check);
                     if (!md5.equals(check)) {
-                        log.error("Mismatch between received checksum (" + check + ") and the calculated one (" + md5 + ").");
-                    } else if (saveFile(artifactURI, new ByteArrayInputStream(baos.toByteArray()))) {
-                        log.info("Saving " + artifactURI + " = " + check + " in the database");
+                        log.error("******************** Mismatch between received checksum (" + check + ") and the calculated one (" + md5 + ").");
+                    } else if (saveFile(artifactURI, copy)) {
+                        log.info("******************** Saving " + artifactURI + " = " + check + " in the database");
                         EsacChecksumPersistance.getInstance().upsert(artifactURI, checksum);
                     }
                 }
             } catch (Exception e) {
                 log.error(e.getMessage());
+                e.printStackTrace();
+                System.exit(2);
             } finally {
                 try {
+                    if (copy != null) {
+                        copy.close();
+                    }
                     if (baos != null) {
                         baos.close();
                     }
@@ -150,15 +162,17 @@ public class EsacArtifactStorage implements ArtifactStore {
                     }
                 } catch (IOException e) {
                     log.error(e.getMessage());
+                    e.printStackTrace();
+                    System.exit(2);
                 }
             }
         }
-        log.info("Leaving store method");
+        log.info("******************** Leaving store method");
     }
 
     @Override
     public Set<ArtifactMetadata> list(String archive) throws TransientException, UnsupportedOperationException, AccessControlException {
-        log.info("Entering list method for archive = '" + archive + "'");
+        log.info("******************** Entering list method for archive = '" + archive + "'");
         Set<ArtifactMetadata> artifactMetadataSet = new HashSet<ArtifactMetadata>();
         String sql = "select distinct(a.artifact), a.checksum " + "from caom2.checksums a";
         log.info(sql);
@@ -178,42 +192,41 @@ public class EsacArtifactStorage implements ArtifactStore {
                 artifactMetadataSet.add(am);
             }
         } catch (SQLException | PropertyVetoException ex) {
-            log.error(ex.getMessage());
             artifactMetadataSet.clear();
+            log.error(ex.getMessage());
+            ex.printStackTrace();
+            System.exit(2);
         } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                }
-            }
+        	try {
+	            if (rs != null) {
+	                    rs.close();
+	            }
+	            if (stmt != null) {
+	                    stmt.close();
+	            }
+	            if (con != null) {
+	                    con.close();
+	            }
+        	} catch(Exception e) {
+                log.error(e.getMessage());
+                e.printStackTrace();
+                System.exit(2);        		
+        	}
         }
-        log.info("Leaving list method with " + artifactMetadataSet.size() + " ArtifactMetadata objects in it");
+        log.info("******************** Leaving list method with " + artifactMetadataSet.size() + " ArtifactMetadata objects in it");
         return artifactMetadataSet;
     }
 
     @Override
     public String toStorageID(String artifactURI) throws IllegalArgumentException {
-        log.info("Entering toStorageID method for artifactURI = '" + artifactURI + "'");
+        log.info("******************** Entering toStorageID method for artifactURI = '" + artifactURI + "'");
         String storageLocation = null;
         try {
             storageLocation = parsePath(artifactURI);
         } catch (NotValidInstrumentException e) {
             throw new IllegalArgumentException(e.getMessage());
         }
-        log.info("Leaving toStorageID method with storageId = '" + storageLocation + "'");
+        log.info("******************** Leaving toStorageID method with storageId = '" + storageLocation + "'");
         return storageLocation;
     }
 
@@ -257,6 +270,8 @@ public class EsacArtifactStorage implements ArtifactStore {
     private boolean saveFile(URI artifactURI, InputStream input) throws IOException, IllegalArgumentException {
         String path = null;
         boolean correct = true;
+        log.info("******************** Entering saveFile method for artifactURI = '" + artifactURI + "'");
+
         try {
             path = parsePath(artifactURI.toString());
         } catch (NotValidInstrumentException e2) {
@@ -325,7 +340,7 @@ public class EsacArtifactStorage implements ArtifactStore {
                 }
             }
         }
-        log.info("FINISHED saving file '" + path + "'");
+        log.info("******************** Leaving saving file '" + path + "'");
 
         return correct;
     }
@@ -335,8 +350,6 @@ public class EsacArtifactStorage implements ArtifactStore {
         String mast = artifact.split("[:]")[0];
         String rest = artifact.substring(mast.length() + 1);
         String[] parts = rest.split("[/]");
-        String hst = parts[0];
-        String product = parts[1];
         String name = parts[2];
         boolean toBeCompressed = name.endsWith(".fits");
         char first = name.charAt(0);
@@ -475,6 +488,9 @@ public class EsacArtifactStorage implements ArtifactStore {
             } catch (Exception e) {
                 log.error(e.getMessage());
             }
+        }
+        if (ConfigProperties.isForceShutdown()) {
+        	System.exit(3);
         }
     }
 }

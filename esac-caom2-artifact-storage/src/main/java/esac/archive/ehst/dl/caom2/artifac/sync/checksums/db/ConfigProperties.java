@@ -19,6 +19,7 @@ public class ConfigProperties {
     private static String dbPass = "";
     private static String collection = null;
     private static String pathToConfigFile = "";
+    private static boolean forceShutdown = false;
 
     private static final Logger log = Logger.getLogger(ConfigProperties.class);
 
@@ -36,12 +37,13 @@ public class ConfigProperties {
         return instance;
     }
 
-    public static void Init(String path, String pass, String c) {
+    public static void Init(String path, String pass, String c, boolean force) {
         log.info("Creating properties file");
         prop = new Properties();
         dbPass = pass;
         pathToConfigFile = path;
         collection = c;
+        forceShutdown = force;
         initialized = true;
     }
 
@@ -94,5 +96,9 @@ public class ConfigProperties {
     public static void setCollection(String collection) {
         ConfigProperties.collection = collection;
     }
+
+	public static boolean isForceShutdown() {
+		return forceShutdown;
+	}
 
 }

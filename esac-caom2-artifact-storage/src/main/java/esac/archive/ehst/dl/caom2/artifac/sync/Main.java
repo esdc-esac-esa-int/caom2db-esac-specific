@@ -29,6 +29,7 @@ public class Main {
         }
 
         String configFile = am.getValue("configFile");
+        boolean forceShutdown = am.isSet("forceShutdown");
         String dbPass = am.getValue("dbPass");
         String collection = am.getValue("collection");
 
@@ -47,7 +48,7 @@ public class Main {
             usage();
             System.exit(1);
         }
-        ConfigProperties.Init(configFile, dbPass, collection);
+        ConfigProperties.Init(configFile, dbPass, collection, forceShutdown);
 
         if (am.isSet("h") || am.isSet("help")) {
             usage();
@@ -74,6 +75,7 @@ public class Main {
         sb.append("\n        -d | --debug");
         sb.append("\n        -h | --help");
         sb.append("\n        --profile : Profile task execution");
+        sb.append("\n        --forceShutdown : If available, it forces the end of the process after the batch is finished");
         sb.append("\n\n    authentication:");
         sb.append("\n        [--netrc|--cert=<pem file>]");
         sb.append("\n        --netrc : read username and password(s) from ~/.netrc file");
