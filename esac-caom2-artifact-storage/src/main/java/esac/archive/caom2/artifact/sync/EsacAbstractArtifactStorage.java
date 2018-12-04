@@ -49,7 +49,7 @@ public abstract class EsacAbstractArtifactStorage implements ArtifactStore {
 
     private static final Logger log = Logger.getLogger(EsacAbstractArtifactStorage.class.getName());
 
-    protected static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    protected static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     protected static final DecimalFormat decimalFormat = new DecimalFormat(".##");
 
     /**

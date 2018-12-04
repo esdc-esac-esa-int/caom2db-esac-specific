@@ -16,6 +16,8 @@ import org.apache.log4j.Logger;
  *
  */
 public class ConfigProperties {
+	public static final String PROP_REPOSITORY_ROOT = "caom2.artifactsync.repository.root";
+	
 	public static final String PROP_DB_HOST = "esac.tools.db.dbhost";
 	public static final String PROP_DB_PORT = "esac.tools.db.dbport";
 	public static final String PROP_DB_NAME = "esac.tools.db.dbname";
