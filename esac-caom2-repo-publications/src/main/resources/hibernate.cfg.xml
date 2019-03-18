@@ -6,12 +6,24 @@
 <hibernate-configuration>
 <session-factory>
     <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
-    <property name="hibernate.connection.url">jdbc:postgresql://hstdev02.n1data.lan:8300/ehst_dev</property>
-    <property name="hibernate.connection.username">postgres</property>
-    <property name="hibernate.connection.password">eh2t_r00t</property>
     <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQL94Dialect</property>
-    <property name="show_sql">true</property>
-    <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal" />
+    <property name="show_sql">false</property>
+
+    <property name="resource">https://mast.stsci.edu/portal/ArchivePartner/papers</property>
+
+    <property name="hibernate.connection.host">hstdev02.n1data.lan</property>
+    <property name="hibernate.connection.port">8300</property>
+    <property name="hibernate.connection.database">ehst_dev</property>
+    <property name="hibernate.connection.username">postgres</property>
+
+    <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>
+    <property name="ads.url">https://api.adsabs.harvard.edu/v1/search/bigquery</property>
+
+    <property name="hibernate.default_schema">ehst</property>
+
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication" />
+    <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal" />
+    <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.PublicationProposal" />
+
 </session-factory>
 </hibernate-configuration>

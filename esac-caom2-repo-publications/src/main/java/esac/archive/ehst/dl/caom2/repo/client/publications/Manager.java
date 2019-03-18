@@ -205,7 +205,13 @@ public class Manager {
                     throw e;
                 }
             } else {
-                newRead = ProposalsReader.getInstance().read(resource);
+            	try {
+            		newRead = ProposalsReader.getInstance().read(resource);
+            	} catch(Exception ex) {
+                    log.error("error reading content from service " + ex.getMessage());
+                    ex.printStackTrace();
+                    throw ex;
+            	}
             }
 
             proposalsChanged = !readFromLocal || lastRead == null || !lastRead.equals(newRead);
@@ -241,6 +247,7 @@ public class Manager {
             correct = false;
             log.error("error parsing content from service " + e.getMessage());
             e.printStackTrace();
+            newProposals = null;
         }
 
         if (correct) {

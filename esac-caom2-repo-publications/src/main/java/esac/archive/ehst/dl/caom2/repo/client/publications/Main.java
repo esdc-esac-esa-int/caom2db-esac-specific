@@ -53,25 +53,27 @@ public class Main {
 
                 List<Proposal> currentProposals = Manager.readCurrentProposals(session);
                 List<Proposal> allProposals = Manager.readAllProposals(resource, threads);
-                List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
-                Map<String, Publication> allPublications = Manager.readAllPublications(allBibcodes, adsUrl, adsToken);
-
-                allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
-
-                if (allProposals != null && allPublications != null) {
-                    if (currentProposals != null) {
-                        log.info("current proposals " + currentProposals.size());
-                        log.info("all proposals     " + allProposals.size());
-                        try {
-                            log.info("removing old proposals and publications");
-                            Manager.removeOldProposals(session, currentProposals, allProposals);
-                            log.info("adding new proposals and publications");
-                            Manager.addNewProposals(session, currentProposals, allProposals);
-                        } catch (Exception ex) {
-                            log.error(ex.getMessage());
-                            correct = false;
-                        }
-                    }
+                if (allProposals != null) {
+	                List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
+	                Map<String, Publication> allPublications = Manager.readAllPublications(allBibcodes, adsUrl, adsToken);
+	
+	                allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
+	
+	                if (allProposals != null && allPublications != null) {
+	                    if (currentProposals != null) {
+	                        log.info("current proposals " + currentProposals.size());
+	                        log.info("all proposals     " + allProposals.size());
+	                        try {
+	                            log.info("removing old proposals and publications");
+	                            Manager.removeOldProposals(session, currentProposals, allProposals);
+	                            log.info("adding new proposals and publications");
+	                            Manager.addNewProposals(session, currentProposals, allProposals);
+	                        } catch (Exception ex) {
+	                            log.error(ex.getMessage());
+	                            correct = false;
+	                        }
+	                    }
+	                }
                 }
             }
         }
