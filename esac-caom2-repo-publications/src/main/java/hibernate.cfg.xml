@@ -11,16 +11,16 @@
 
     <property name="resource">https://mast.stsci.edu/portal/ArchivePartner/papers</property>
 
-    <property name="hibernate.connection.host">hstdev02.n1data.lan</property>
+    <property name="hibernate.connection.host">hst04.n1data.lan</property>
     <property name="hibernate.connection.port">8300</property>
-    <property name="hibernate.connection.database">ehst_dev</property>
+    <property name="hibernate.connection.database">ehst</property>
     <property name="hibernate.connection.username">postgres</property>
-    
-    <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>
+
+    <property name="ads.token">*******</property>
     <property name="ads.url">https://api.adsabs.harvard.edu/v1/search/bigquery</property>
-        
-    <property name="hibernate.default_schema">caom2_hla</property>
-    
+
+    <property name="hibernate.default_schema">ehst</property>
+
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Publication" />
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.Proposal" />
     <mapping class="esac.archive.ehst.dl.caom2.repo.client.publications.entities.PublicationProposal" />

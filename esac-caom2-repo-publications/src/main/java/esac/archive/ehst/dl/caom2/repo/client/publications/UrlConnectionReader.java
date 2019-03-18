@@ -32,10 +32,9 @@ public class UrlConnectionReader {
         } catch (MalformedURLException ex) {
             log.error("Error creating url '" + url + "': " + ex.getMessage());
             correct = false;
+            throw ex;
         }
-        if (!correct) {
-            return null;
-        }
+
         try {
             if (url.startsWith("https")) {
                 con = (HttpsURLConnection) service.openConnection();
@@ -46,9 +45,7 @@ public class UrlConnectionReader {
         } catch (IOException ex) {
             log.error("Error opening connection to url '" + url + "': " + ex.getMessage());
             correct = false;
-        }
-        if (!correct) {
-            return null;
+            throw ex;
         }
         try {
             in = new BufferedReader(new InputStreamReader(is));
