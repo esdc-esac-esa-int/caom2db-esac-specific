@@ -639,4 +639,44 @@ public class Manager {
 
     }
 
+	public static void empty_tables() {
+
+        String emptyProposals = "TRUNCATE " + ConfigProperties.getInstance().getSchema() + ".proposal" + " RESTART IDENTITY CASCADE";
+        String emptyPublications = "TRUNCATE " + ConfigProperties.getInstance().getSchema() + ".publication" + " RESTART IDENTITY CASCADE";
+        String emptyPropPub = "TRUNCATE " + ConfigProperties.getInstance().getSchema() + ".publication_proposal" + " RESTART IDENTITY CASCADE";
+
+        log.info(emptyProposals);
+        log.info(emptyPublications);
+        log.info(emptyPropPub);
+
+        Connection con = null;
+        Statement stmt = null;
+
+
+        try {
+            con = JdbcSingleton.getInstance().getConnection();
+            stmt = con.createStatement();
+            stmt.execute(emptyProposals);
+            stmt.execute(emptyPublications);
+            stmt.execute(emptyPropPub);
+
+        } catch (Exception ex) {
+        	log.error(ex.getMessage());
+        } finally {
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
+    	log.error("Tables truncated");
+
+	}
 }

@@ -16,7 +16,7 @@
     <property name="hibernate.connection.database">ehst</property>
     <property name="hibernate.connection.username">postgres</property>
 
-    <property name="ads.token">************************************</property>
+    <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>
     <property name="ads.url">https://api.adsabs.harvard.edu/v1/search/bigquery</property>
 
     <property name="hibernate.default_schema">ehst</property>

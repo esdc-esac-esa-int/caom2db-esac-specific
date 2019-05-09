@@ -43,6 +43,9 @@ public class Main {
             }
             if (correct) {
                 log.info("DB tables exist");
+            	Manager.empty_tables();
+                log.info("DB tables empty");
+
                 SessionFactory factory = ConfigProperties.getInstance().getFactory();
                 Session session = factory.openSession();
 
@@ -75,13 +78,14 @@ public class Main {
 	                    }
 	                }
                 }
+            	
             }
         }
 
         System.exit(0);
     }
 
-    private static boolean readConfig(ArgumentMap am) {
+	private static boolean readConfig(ArgumentMap am) {
         boolean correct = true;
         if (am.isSet("d") || am.isSet("debug")) {
             Log4jInit.setLevel("esac.archive.ehst.dl.caom2.repo.client.publications", Level.DEBUG);
