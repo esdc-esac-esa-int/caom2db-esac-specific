@@ -43,8 +43,6 @@ public class Main {
             }
             if (correct) {
                 log.info("DB tables exist");
-            	Manager.empty_tables();
-                log.info("DB tables empty");
 
                 SessionFactory factory = ConfigProperties.getInstance().getFactory();
                 Session session = factory.openSession();
@@ -67,8 +65,10 @@ public class Main {
 	                        log.info("current proposals " + currentProposals.size());
 	                        log.info("all proposals     " + allProposals.size());
 	                        try {
-	                            log.info("removing old proposals and publications");
-	                            Manager.removeOldProposals(session, currentProposals, allProposals);
+	                        	Manager.empty_tables();
+	                            log.info("DB tables empty");
+//	                            log.info("removing old proposals and publications");
+//	                            Manager.removeOldProposals(session, currentProposals, allProposals);
 	                            log.info("adding new proposals and publications");
 	                            Manager.addNewProposals(session, currentProposals, allProposals);
 	                        } catch (Exception ex) {

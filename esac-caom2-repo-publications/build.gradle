@@ -16,7 +16,7 @@ sourceCompatibility = 1.8
 
 group = 'org.opencadc'
 
-version = '2.8'
+version = '2.9'
 
 mainClassName = 'esac.archive.ehst.dl.caom2.repo.client.publications.Main'
 
