@@ -11,9 +11,9 @@
 
     <property name="resource">https://mast.stsci.edu/portal/ArchivePartner/papers</property>
 
-    <property name="hibernate.connection.host">hst04.n1data.lan</property>
+    <property name="hibernate.connection.host">hstdev02.n1data.lan</property>
     <property name="hibernate.connection.port">8300</property>
-    <property name="hibernate.connection.database">ehst</property>
+    <property name="hibernate.connection.database">ehst_dev</property>
     <property name="hibernate.connection.username">postgres</property>
 
     <property name="ads.token">Im5Usu3jlOrqERt1ke9RIdmsK3MidqXTTh7LQY4I</property>

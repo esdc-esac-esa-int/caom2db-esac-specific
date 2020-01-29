@@ -3,6 +3,7 @@ package esac.archive.ehst.dl.caom2.repo.client.publications;
 import ca.nrc.cadc.util.Log4jInit;
 
 import java.beans.PropertyVetoException;
+import java.io.File;
 import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.List;
@@ -107,9 +108,12 @@ public class Main {
         }
 
         String hibConfigFile = am.getValue("hibernate");
+        System.out.println("hibConfigFile = " + hibConfigFile);
+        
+        File hib = new File(hibConfigFile);
         boolean isLocal = am.isSet("local");
 
-        configuration = new Configuration().configure(hibConfigFile);
+        configuration = new Configuration().configure(hib);
 
         Integer nthreads = null;
         try {
@@ -119,7 +123,9 @@ public class Main {
         }
 
         String resource = configuration.getProperty("resource");
+        System.out.println("resource = " + resource);
         String driver = configuration.getProperty("hibernate.connection.driver_class");
+        System.out.println("driver = " + driver);
         String database = configuration.getProperty("hibernate.connection.database");
         String schema = configuration.getProperty("hibernate.default_schema");
         String host = configuration.getProperty("hibernate.connection.host");
