@@ -5,6 +5,7 @@ import ca.nrc.cadc.util.Log4jInit;
 import java.beans.PropertyVetoException;
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,6 @@ public class Main {
                 String adsUrl = ConfigProperties.getInstance().getAdsUrl();
                 String adsToken = ConfigProperties.getInstance().getAdsToken();
 
-                List<Proposal> currentProposals = Manager.readCurrentProposals(session);
                 List<Proposal> allProposals = Manager.readAllProposals(resource, threads);
                 if (allProposals != null) {
 	                List<String> allBibcodes = Manager.getAllBibcodes(allProposals);
@@ -62,21 +62,22 @@ public class Main {
 	                allProposals = Manager.fillPublicationsIntoProposals(allProposals, allPublications);
 	
 	                if (allProposals != null && allPublications != null) {
-	                    if (currentProposals != null) {
-	                        log.info("current proposals " + currentProposals.size());
-	                        log.info("all proposals     " + allProposals.size());
-	                        try {
-	                        	Manager.empty_tables();
-	                            log.info("DB tables empty");
+                    	Manager.empty_tables();
+
+	                    //List<Proposal> currentProposals = Manager.readCurrentProposals(session);
+	                    List<Proposal> currentProposals = new ArrayList<Proposal>();
+
+                        log.info("all proposals     " + allProposals.size());
+                        try {
+                            log.info("DB tables empty");
 //	                            log.info("removing old proposals and publications");
 //	                            Manager.removeOldProposals(session, currentProposals, allProposals);
-	                            log.info("adding new proposals and publications");
-	                            Manager.addNewProposals(session, currentProposals, allProposals);
-	                        } catch (Exception ex) {
-	                            log.error(ex.getMessage());
-	                            correct = false;
-	                        }
-	                    }
+                            log.info("adding new proposals and publications");
+                            Manager.addNewProposals(session, currentProposals, allProposals);
+                        } catch (Exception ex) {
+                            log.error(ex.getMessage());
+                            correct = false;
+                        }
 	                }
                 }
             	
